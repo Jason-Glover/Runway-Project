@@ -1,0 +1,9 @@
+---
+# See full syntax at https://docs.onica.com/projects/runway
+deployments:
+  - modules:
+      - path: vpc.cfn
+      - path: img-mgr.cfn
+      # - etc...
+    regions:
+      - us-east-1
