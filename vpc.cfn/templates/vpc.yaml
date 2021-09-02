@@ -223,7 +223,7 @@ Outputs:
     Value: !GetAtt PrivateSubnet2.AvailabilityZone
   PublicSubnet1AZ:
     Description: AZ of PrivateSubnet1
-    Value: !GetAtt PublicSubnet1.AvailabilityZone.Name
+    Value: !GetAtt PublicSubnet1.AvailabilityZone
   PublicSubnet2AZ:
     Description: AZ of PrivateSubnet2
-    Value: !GetAtt PublicSubnet2.AvailabilityZone.Name
+    Value: !GetAtt PublicSubnet2.AvailabilityZone
