@@ -12,10 +12,10 @@ stacks:
       ApplicationName: Img-Manager
       SshKey: ${ssh_key}
       ImageId: ${ami_id}
-      LoadBalancerSubnets: ${xref common-VPC::PublicSubnet1},${xref common-VPC::PublicSubnet2}
+      LoadBalancerSubnets: ${xref common-VPC::PublicSubnets}
       AppServerMinCount: 2
       AppServerMaxCount: 4
-      AvailabilityZones: ${xref common-VPC::PublicSubnet1AZ},${xref common-VPC::PublicSubnet2AZ}
-      Subnets: ${xref common-VPC::PrivateSubnet1},${xref common-VPC::PrivateSubnet2}
+      AvailabilityZones: ${xref common-VPC::PrivateSubnetAZs}
+      Subnets: ${xref common-VPC::PrivateSubnets}
       VpcId: ${xref common-VPC::VPC}
 
