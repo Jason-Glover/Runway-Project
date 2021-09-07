@@ -1,0 +1,55 @@
+sys_path: ./
+namespace: ''
+# cfngin_bucket: stacker-${customer}-${environment}-${region}
+
+common_parameters: &common_parameters
+  ResMgmtFunArn: ${cfn cfn-res-mgr-${environment}.LambdaFunctionArn}
+
+stacks:
+  widget1:
+    template_path: templates/icon.yaml
+    variables:
+      << : *common_parameters
+      Type: screen
+  widget2:
+    template_path: templates/icon.yaml
+    variables:
+      << : *common_parameters
+      Type: sql
+  widget3:
+    template_path: templates/icon.yaml
+    variables:
+      << : *common_parameters
+      Type: trash
+  widget4:
+    template_path: templates/icon.yaml
+    variables:
+      << : *common_parameters
+      Type: screen
+  widget5:
+    template_path: templates/icon.yaml
+    variables:
+      << : *common_parameters
+      Type: construction
+
+post_deploy:
+  render_template:
+    path: hooks.replace.string
+    args:
+      path: static
+      file: index.html.template
+      output_file: index.html
+      key_word: API_GW_ENDPOINT
+      value_xref: display-api-${environment}::ServiceEndpoint
+  upload_static_website:
+    path: hooks.s3upload.upload
+    args:
+      local_path: static
+      local_file: index.html
+      s3_file_key: index.html
+      bucket_xref: display-api-${environment}::S3Bucket
+  print_output_notice:
+    path: hooks.output.print_xref_msg
+    args:
+      msg: Deployment complete. Pull up your web browser to visit
+      xref_output: display-api-${environment}::S3BucketWebSite

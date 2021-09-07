@@ -1,0 +1,12 @@
+{
+  "name": "tool",
+  "version": "1.5.1",
+  "description": "AMI Maker",
+  "main": "handler.py",
+  "devDependencies": {
+    "serverless": "^1.28.0",
+    "serverless-s3-sync": "^1.9.2"
+  },
+  "author": "Onica",
+  "dependencies": {}
+}

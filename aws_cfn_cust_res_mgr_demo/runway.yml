@@ -1,0 +1,8 @@
+---
+deployments:
+  - modules:
+      - cfn-res-mgr.sls
+      - display.sls
+      - icons.cfn
+    regions:
+      - us-west-2

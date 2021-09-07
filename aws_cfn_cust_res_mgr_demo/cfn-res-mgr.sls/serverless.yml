@@ -1,0 +1,47 @@
+service: cfn-res-mgr
+package:
+  exclude:
+    - 'node_modules/**'
+provider:
+  name: aws
+  runtime: python3.7
+  logRetentionInDays: 1
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:DeleteItem
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:UpdateItem
+      Resource:
+        - !GetAtt [stateManager, Arn]
+
+functions:
+  lookup:
+    environment:
+      STATE_TBL_NAME: !Ref stateManager
+    handler: handler.lambda_handler
+resources:
+  Resources:
+    stateManager:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${self:provider.stage}-state
+        AttributeDefinitions:
+          - AttributeName: resourceId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: resourceId
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+  Outputs:
+    LambdaFunctionArn:
+      Value: !GetAtt [LookupLambdaFunction, Arn]
+    StateManagerArn:
+      Value: !GetAtt [stateManager, Arn]
+    StateManagerName:
+      Value: !Ref stateManager

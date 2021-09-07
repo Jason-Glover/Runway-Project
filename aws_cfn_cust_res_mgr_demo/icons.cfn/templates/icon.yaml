@@ -1,0 +1,35 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: A custom resource manager wrapper
+Parameters:
+  Type:
+    Description: Icon type would you like
+    Type: String
+    AllowedValues:
+      - head
+      - alarm
+      - cell
+      - hour_glass
+      - pd
+      - sql
+      - trash
+      - bell
+      - construction
+      - hammer
+      - key
+      - screen
+      - tag
+      - bomb
+      - crown
+      - squid
+      - tombstone
+  ResMgmtFunArn:
+    Description: Function ARN for custom resource management
+    Type: String
+Resources:
+  MyCustomResource:
+    Type: Custom::Icon
+    Properties:
+      Type: !Ref Type
+      Region: !Ref AWS::Region
+      ServiceToken: !Ref ResMgmtFunArn
