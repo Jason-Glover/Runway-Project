@@ -1,0 +1,25 @@
+namespace: ${namespace}
+cfngin_bucket: ${cfngin_bucket_name}
+
+sys_path: ./
+
+stacks:
+  img-mgr:
+    template_path: templates/app.yaml  # also supports json templates
+    variables:
+      EnvironmentName: ${environment}
+      CustomerName: ${customer}
+      ApplicationName: Img-Manager-App
+      SshKey: ${ssh_key}
+      ImageId: ${ami_id}
+      LoadBalancerSubnets: ${xref development-VPC::PublicSubnets}
+      AvailabilityZones: ${xref development-VPC::PrivateSubnetAZs}
+      Subnet: ${xref development-VPC::PrivateSubnets}
+      VpcId: ${xref development-VPC::VPC}
+      SNSEmail: jason.glover@rackspace.com
+      ASGMin: ${ASGMinimal}
+      ASGMax: ${ASGMaximum}
+      CPUHighPolicyTargetValue: ${CPUHighValue}
+      CPULowPolicyTargetValue: ${CPULowValue}
+      InstanceType: ${EC2Instances}
+
