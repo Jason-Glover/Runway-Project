@@ -1,0 +1,19 @@
+namespace: ${customer}-${environment}
+cfngin_bucket: ${cfngin_bucket_name}
+
+sys_path: ./
+
+stacks:
+  vpc:
+    template_path: templates/imgmgr-cfn.json  # also supports json templates
+    variables:
+      EnvironmentName: ${environment}
+      CustomerName: ${customer}
+      ApplicationName: img-mgr-app
+      SshKey: ${ssh_key}
+      ImageId: ${ami_id}
+      VpcId: ${xref gloverinc-common-vpc::VPC}
+      LoadBalancerSubnets: ${xref gloverinc-common-vpc::PublicSubnets}
+      Subnets: ${xref gloverinc-common-vpc::PrivateSubnets}
+      AvailabilityZones: ${region}a,${region}b
+      AppServerMaxCount: 2

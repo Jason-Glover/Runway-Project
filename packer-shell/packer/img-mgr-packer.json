@@ -1,0 +1,36 @@
+{
+  "variables": {
+    "aws_region": "us-west-2",
+    "aws_source_ami": "ami-083ac7c7ecf9bb9b0",
+    "aws_instance_type": "t3.large"
+  },
+  "builders": [
+    {
+      "type": "amazon-ebs",
+      "associate_public_ip_address": true,
+      "region": "{{user `aws_region`}}",
+      "source_ami": "{{user `aws_source_ami`}}",
+      "instance_type": "{{user `aws_instance_type`}}",
+      "ami_name": "my-ami-{{timestamp}}",
+      "ssh_username": "ec2-user",
+      "tags": {
+        "application": "img-mgr",
+        "created-by": "packer"
+      }
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "file",
+      "source": "install_my_app.sh",
+      "destination": "/tmp/install_my_app.sh"
+    },
+    {
+      "type": "shell",
+      "inline":
+      [
+        "sudo sh /tmp/install_my_app.sh"
+      ]
+    }
+  ]
+}

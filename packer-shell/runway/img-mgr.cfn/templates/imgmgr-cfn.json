@@ -1,0 +1,393 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Image Manager - 1.0.0",
+  "Parameters": {
+    "EnvironmentName": {
+      "Type": "String",
+      "Description": "Environment to which this stack belongs",
+      "AllowedValues": [ "development", "production" ]
+    },
+    "CustomerName": {
+      "Type": "String",
+      "Description": "Name of customer"
+    },
+    "ApplicationName": {
+      "Type": "String",
+      "Description": "The name of the application"
+    },
+    "SshKey": {
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "Description": "SSH Key pair to auth with"
+    },
+    "ImageId": {
+      "Type": "AWS::EC2::Image::Id",
+      "Description": "The AMI to base this instance off of",
+      "Default": "ami-083ac7c7ecf9bb9b0"
+    },
+    "VpcId": {
+      "Type": "AWS::EC2::VPC::Id",
+      "Description": "The VPC the resources are launched within"
+    },
+    "LoadBalancerSubnets": {
+      "Type": "List<AWS::EC2::Subnet::Id>",
+      "Description": "List of subnets for ELB"
+    },
+    "Subnets": {
+      "Type": "List<AWS::EC2::Subnet::Id>",
+      "Description": "Subnets for instances to live within"
+    },
+    "AppServerMinCount": {
+      "Type": "String",
+      "Description": "How many min instance count to run",
+      "Default": "1"
+    },
+    "AppServerMaxCount": {
+      "Type": "String",
+      "Description": "How many max instance count to run",
+      "Default": "2"
+    },
+    "AvailabilityZones": {
+      "Type": "List<AWS::EC2::AvailabilityZone::Name>",
+      "Description": "which AZs to launch instances into"
+    },
+    "HealthCheckType": {
+      "Type": "String",
+      "Description": "How many max instance count to run",
+      "Default": "EC2",
+      "AllowedValues": ["EC2", "ELB"]
+    },
+    "InstanceType": {
+      "Type": "String",
+      "Description": "Instance size",
+      "Default": "t2.small",
+      "AllowedValues": [
+        "c3.2xlarge",
+        "c3.4xlarge",
+        "c3.8xlarge",
+        "c3.large",
+        "c3.xlarge",
+        "c4.2xlarge",
+        "c4.4xlarge",
+        "c4.8xlarge",
+        "c4.large",
+        "c4.xlarge",
+        "c4.2xlarge",
+        "d2.2xlarge",
+        "d2.4xlarge",
+        "d2.8xlarge",
+        "d2.xlarge",
+        "g2.2xlarge",
+        "g2.2xlarge ",
+        "g2.8xlarge",
+        "g2.8xlarge ",
+        "i2.2xlarge",
+        "i2.4xlarge",
+        "i2.8xlarge",
+        "i2.xlarge",
+        "m1.xlarge",
+        "m3.2xlarge",
+        "m3.large",
+        "m3.medium",
+        "m3.xlarge",
+        "m4.10xlarge",
+        "m4.2xlarge",
+        "m4.4xlarge",
+        "m4.large",
+        "m4.xlarge",
+        "r3.2xlarge",
+        "r3.4xlarge",
+        "r3.8xlarge",
+        "r3.large",
+        "r3.xlarge",
+        "t2.large",
+        "t2.large ",
+        "t2.medium",
+        "t2.micro",
+        "t2.small",
+        "t3.large",
+        "t3.large ",
+        "t3.medium",
+        "t3.micro",
+        "t3.small"
+      ]
+    }
+  },
+  "Resources": {
+    "InstanceProfile": {
+      "Properties": {
+        "Path": "/",
+        "Roles": [
+          { "Ref": "Role" }
+        ]
+      },
+      "Type": "AWS::IAM::InstanceProfile"
+    },
+    "Role": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "sts:AssumeRole"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "ec2.amazonaws.com"
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Path": "/",
+        "ManagedPolicyArns": ["arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM"],
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "s3:GetObject",
+                    "s3:PutObject",
+                    "s3:DeleteObject"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          {"Fn::GetAtt": ["S3Bucket", "Arn"]},
+                          "/*"
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "s3getputdelete"
+          },
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "s3:ListBucket"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          {"Fn::GetAtt": ["S3Bucket", "Arn"]}
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "s3listbucket"
+          },
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "ec2:DescribeTags"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": ["*"]
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "ec2desctags"
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Role"
+    },
+    "S3Bucket": {
+      "Type": "AWS::S3::Bucket"
+    },
+    "ElasticLoadBalancer":{
+      "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Properties": {
+        "Scheme" : "internet-facing",
+        "CrossZone": true,
+        "SecurityGroups": [{"Ref": "LbSG"}],
+        "Subnets": {"Ref": "LoadBalancerSubnets"},
+        "Listeners": [
+          {
+            "LoadBalancerPort": "80",
+            "InstancePort": "80",
+            "Protocol": "HTTP"
+          }
+        ],
+        "HealthCheck": {
+          "Target": "HTTP:80/",
+          "HealthyThreshold": "2",
+          "UnhealthyThreshold": "2",
+          "Interval": "10",
+          "Timeout": "5"
+        }
+      }
+    },
+    "LbSG" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Allow http from internet",
+        "VpcId" : {"Ref" : "VpcId"},
+        "SecurityGroupIngress" : [
+          {
+            "IpProtocol" : "tcp",
+            "FromPort" : 80,
+            "ToPort" : 80,
+            "CidrIp" : "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    "ServerSG" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Allow http to client host",
+        "VpcId" : {"Ref" : "VpcId"},
+        "SecurityGroupIngress" : [
+          {
+            "IpProtocol" : "tcp",
+            "FromPort" : 80,
+            "ToPort" : 80,
+            "SourceSecurityGroupId" : {"Ref": "LbSG"}
+          }
+        ]
+      }
+    },
+
+
+    "AppServerGroup": {
+      "Type": "AWS::AutoScaling::AutoScalingGroup",
+      "Properties": {
+        "MinSize": {"Ref": "AppServerMinCount"},
+        "MaxSize": {"Ref": "AppServerMaxCount"},
+        "AvailabilityZones" : {"Ref": "AvailabilityZones"},
+        "VPCZoneIdentifier": {"Ref": "Subnets"},
+        "HealthCheckGracePeriod": 300,
+        "HealthCheckType": {"Ref": "HealthCheckType"},
+        "LaunchConfigurationName": {"Ref": "LaunchConfig"},
+        "LoadBalancerNames": [{"Ref": "ElasticLoadBalancer"}],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {"Fn::Sub": "${CustomerName}-${EnvironmentName}-${ApplicationName}"},
+            "PropagateAtLaunch": true
+          },
+          {
+            "Key": "environment",
+            "Value": {"Ref": "EnvironmentName"},
+            "PropagateAtLaunch": true
+          },
+          {
+            "Key": "application",
+            "Value": { "Ref": "ApplicationName"},
+            "PropagateAtLaunch": true
+          }
+        ]
+      },
+      "UpdatePolicy" : {
+        "AutoScalingRollingUpdate" : {
+           "MinInstancesInService" : {"Ref": "AppServerMinCount"},
+           "MaxBatchSize" : "1",
+           "WaitOnResourceSignals" : "false",
+           "PauseTime" : "PT5M"
+        }
+     }
+    },
+    "LaunchConfig": {
+      "Type": "AWS::AutoScaling::LaunchConfiguration",
+      "Properties": {
+        "KeyName": {"Ref": "SshKey"},
+        "ImageId": {"Ref": "ImageId"},
+        "InstanceType": {"Ref": "InstanceType"},
+        "AssociatePublicIpAddress": false,
+        "IamInstanceProfile": {"Ref": "InstanceProfile"},
+        "SecurityGroups": [{"Ref": "ServerSG"}],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "\n",
+              [
+                "#!/bin/sh",
+                "yum install -y git jq",
+                "amazon-linux-extras install -y nginx1",
+                "pip3 install pipenv",
+                "echo \"export PATH=\"\\$PATH:/usr/local/bin\"\" > localbin.sh",
+                "",
+                "cd ~ec2-user/",
+                "cat > ~/.ssh/config << EOF",
+                "Host *",
+                "    StrictHostKeyChecking no",
+                "EOF",
+                "chmod 600 ~/.ssh/config",
+                "git clone https://github.com/dianephan/flask-aws-storage.git",
+                "cd flask-aws-storage",
+                "mkdir uploads",
+                "chown -R ec2-user:ec2-user .",
+                "cat > run.sh << EOF",
+                "#!/bin/sh",
+                "pipenv install",
+                "pipenv run pip3 install -r requirements.txt",
+                "REGION=\\$(curl http://169.254.169.254/latest/meta-data/placement/region)",
+                "IID=\\$(curl http://169.254.169.254/latest/meta-data/instance-id)",
+                "ENV=\\$(aws --region \\$REGION ec2 describe-tags --filters Name=resource-id,Values=\\$IID | jq -r '.Tags[]|select(.Key == \"environment\")|.Value')",
+                "FLASK_ENV=\\$ENV pipenv run flask run",
+                "EOF",
+                "chmod 755 run.sh",
+                "",
+                "cat > /etc/systemd/system/imgmgr.service << EOF",
+                "[Unit]",
+                "Description=Image manager app",
+                "After=network.target",
+                "",
+                "[Service]",
+                "User=ec2-user",
+                "WorkingDirectory=/home/ec2-user/flask-aws-storage",
+                "ExecStart=/home/ec2-user/flask-aws-storage/run.sh",
+                "Restart=always",
+                "",
+                "[Install]",
+                "WantedBy=multi-user.target",
+                "EOF",
+                "",
+                {"Fn::Sub" : "sed -i s/lats-image-data/${S3Bucket}/ app.py"},
+                "systemctl daemon-reload",
+                "systemctl start imgmgr",
+                "",
+                "cat > /etc/nginx/conf.d/myapp.conf << EOF",
+                "server {",
+                "   listen 80;",
+                "   server_name localhost;",
+                "   location / {",
+                "        proxy_set_header Host \\$http_host;",
+                "        proxy_pass http://127.0.0.1:5000;",
+                "    }",
+                "}",
+                "EOF",
+                "systemctl restart nginx.service",
+                ""
+              ]
+            ]
+          }
+        }
+      }
+    }
+  },
+  "Outputs": {
+  }
+}

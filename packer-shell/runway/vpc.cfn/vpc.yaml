@@ -1,0 +1,10 @@
+namespace: ${customer}-${environment}
+cfngin_bucket: ${cfngin_bucket_name}
+
+sys_path: ./
+
+stacks:
+  vpc:
+    template_path: templates/vpc.yaml  # also supports json templates
+    variables:
+      EnvironmentName: ${environment}
