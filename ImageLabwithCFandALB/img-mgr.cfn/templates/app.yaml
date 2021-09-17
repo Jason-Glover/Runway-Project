@@ -195,11 +195,13 @@ Resources:
             - PUT
           TargetOriginId: !Ref InternalElasticLoadBalancer
           ForwardedValues:
-            QueryString: 'true'
+            QueryString: true
             Headers:
               - Authorization
           ViewerProtocolPolicy: redirect-to-https
           Compress: true
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
   InternalElasticLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties: 
