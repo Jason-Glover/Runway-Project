@@ -1,0 +1,11 @@
+---
+# See full syntax at https://docs.onica.com/projects/runway
+deployments:
+  - modules:
+      # Requires the $env:DEPLOY_ENVIRONMENT='development'
+      - path: vpc.cfn
+      # Requires the $env:DEPLOY_ENVIRONMENT='development'
+      - path: img-mgr.cfn
+      # - etc...
+    regions:
+      - us-west-2
