@@ -1,4 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
+#Old Flask location: https://github.com/dianephan/flask-aws-storage.git
+#Glover Flask Location: https://github.com/Jason-Glover/flask-aws-storage.git
+#Spell Flask Location: https://github.com/spellingb/flask-aws-storage.git
 Description: Image Manager - 1.0.0
 Parameters:
   EnvironmentName:
@@ -194,12 +197,18 @@ Resources:
             - POST
             - PUT
           TargetOriginId: !Ref InternalElasticLoadBalancer
+          DefaultTTL: 100
+          MaxTTL: 100
+          MinTTL: 50
           ForwardedValues:
             QueryString: true
-            Headers:
-              - Authorization
           ViewerProtocolPolicy: redirect-to-https
           Compress: true
+        CacheBehaviors:
+          - PathPattern: /pics
+            TargetOriginId: !Ref InternalElasticLoadBalancer
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
   InternalElasticLoadBalancer:
@@ -360,7 +369,7 @@ Resources:
               - '    StrictHostKeyChecking no'
               - EOF
               - chmod 600 ~/.ssh/config
-              - 'git clone https://github.com/dianephan/flask-aws-storage.git'
+              - 'git clone https://github.com/Jason-Glover/flask-aws-storage.git'
               - cd flask-aws-storage
               - mkdir uploads
               - 'chown -R ec2-user:ec2-user .'
@@ -420,3 +429,5 @@ Outputs:
     Value: !GetAtt 'InternalElasticLoadBalancer.DNSName'
   CF:
     Value: !GetAtt 'Distribution.DomainName'
+  S3ARN:
+    Value: !GetAtt S3Bucket.Arn
