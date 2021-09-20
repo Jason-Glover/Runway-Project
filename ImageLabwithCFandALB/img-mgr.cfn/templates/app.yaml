@@ -283,6 +283,12 @@ Resources:
         - Key: environment
           PropagateAtLaunch: true
           Value: !Ref EnvironmentName
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MinInstancesInService: !Ref ASGMin
+        MaxBatchSize: 1
+        WaitOnResourceSignals: false
+        PauseTime: PT5M
   CPUHighScalingPolicy:
     Type: AWS::AutoScaling::ScalingPolicy
     Properties: 
