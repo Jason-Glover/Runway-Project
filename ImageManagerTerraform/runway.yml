@@ -2,8 +2,8 @@
 # See full syntax at https://docs.onica.com/projects/runway
 deployments:
   - modules:
-      - path: sampleapp.cfn
-      - path: sampleapp.tf
+      - path: vpc.tf
+      - path: imgmgr.tf
       # - etc...
     regions:
       - us-east-1

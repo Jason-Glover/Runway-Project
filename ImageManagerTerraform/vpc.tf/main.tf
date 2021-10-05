@@ -6,7 +6,7 @@ terraform {
 }
 
 provider "aws" {
-  region = var.aws_region
+  region = "${var.region}"
 }
 
 # Declare the data source to obtain available AZ's
