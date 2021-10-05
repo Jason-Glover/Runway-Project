@@ -1,0 +1,42 @@
+provider "aws" {
+  region  = "us-west-2"
+}
+
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+module "vpc" {
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "2.64.0"
+
+  cidr = var.vpc_cidr_block
+  var.aws_region = "us-west-1"{
+  azs             = data.aws_availability_zones.available.names
+  private_subnets = slice(var.private_subnet_cidr_blocks, 0, var.private_subnet_count)
+  public_subnets  = slice(var.public_subnet_cidr_blocks, 0, var.public_subnet_count)
+  }
+  var.aws_region = "us-west-2"{
+  azs             = data.aws_availability_zones.available.names
+  private_subnets = slice(var.private_subnet_cidr_blocks, 2, var.private_subnet_count)
+  public_subnets  = slice(var.public_subnet_cidr_blocks, 2, var.public_subnet_count)
+  }
+  var.aws_region = "us-east-1"{
+  azs             = data.aws_availability_zones.available.names
+  private_subnets = slice(var.private_subnet_cidr_blocks, 4, var.private_subnet_count)
+  public_subnets  = slice(var.public_subnet_cidr_blocks, 4, var.public_subnet_count)
+  }
+  var.aws_region = "us-east-2"{
+  azs             = data.aws_availability_zones.available.names
+  private_subnets = slice(var.private_subnet_cidr_blocks, 6, var.private_subnet_count)
+  public_subnets  = slice(var.public_subnet_cidr_blocks, 6, var.public_subnet_count)
+  }
+
+  enable_nat_gateway = true
+  enable_vpn_gateway = false
+
+  tags = {
+    project     = "VPC",
+    environment = "DEV"
+  }
+}
