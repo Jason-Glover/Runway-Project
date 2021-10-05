@@ -6,7 +6,7 @@ terraform {
 }
 
 provider "aws" {
-  region = "${var.region}"
+  region = var.region
 }
 
 # Declare the data source to obtain available AZ's
@@ -54,7 +54,7 @@ resource "aws_route_table" "PrivateRT" {
   vpc_id = aws_vpc.vpc.id
   tags = {
     Name = "${var.environment}-PrivateRT-${var.private_subnet_cidr_blocks[count.index]}"
-      }
+  }
 }
 
 # Private RT Nat Gateway Association
@@ -90,22 +90,22 @@ resource "aws_subnet" "privatesubnet" {
 
 # Private Route Table association with Private Subnets
 resource "aws_route_table_association" "private" {
-  count = length(var.private_subnet_cidr_blocks)
+  count          = length(var.private_subnet_cidr_blocks)
   subnet_id      = aws_subnet.privatesubnet[count.index].id
   route_table_id = aws_route_table.PrivateRT[count.index].id
 }
 
 # Public Route Table association with Public Subnets
 resource "aws_route_table_association" "public" {
-  count = length(var.public_subnet_cidr_blocks)
+  count          = length(var.public_subnet_cidr_blocks)
   subnet_id      = aws_subnet.publicsubnet[count.index].id
   route_table_id = aws_route_table.PublicRT.id
 }
 
 # EIP Creation
 resource "aws_eip" "nat" {
-  count         = length(var.public_subnet_cidr_blocks)
-  vpc      = true
+  count = length(var.public_subnet_cidr_blocks)
+  vpc   = true
 }
 
 
