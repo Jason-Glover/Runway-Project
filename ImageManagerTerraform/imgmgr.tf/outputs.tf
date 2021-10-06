@@ -3,5 +3,5 @@ output "alb_dns_name" {
   }
 
 output "cf_dns_name" {
-    value = join("",["http://",aws_cloudfront_distribution.cf.domain_name])
+    value = join("",["https://",aws_cloudfront_distribution.cf.domain_name])
 }
