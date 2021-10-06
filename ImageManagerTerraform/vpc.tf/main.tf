@@ -115,7 +115,7 @@ resource "aws_nat_gateway" "natgwy" {
   allocation_id = aws_eip.nat[count.index].id
   subnet_id     = aws_subnet.publicsubnet[count.index].id
   tags = {
-    "Name" = "${var.environment}-PrivateNatSub-${var.private_subnet_cidr_blocks[count.index]}"
+    "Name"      = "${var.environment}-PrivateNatSub-${var.private_subnet_cidr_blocks[count.index]}"
   }
 }
 
