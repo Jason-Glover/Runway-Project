@@ -17,7 +17,7 @@ provider "aws" {
   region  = var.region
   default_tags {
     tags = {
-      Environment = var.environment
+      Environment = "${terraform.workspace}"
       Application = var.ApplicationName
     }
   }
@@ -34,7 +34,9 @@ data "terraform_remote_state" "remote_state" {
 }
 
 # S3 Bucket Creation
-resource "aws_s3_bucket" "imgmgr_bucket" {}
+resource "aws_s3_bucket" "imgmgr_bucket" {
+  bucket_prefix = "${var.customer_name}-${terraform.workspace}-"
+}
 
 # Instance Profile
 resource "aws_iam_instance_profile" "ec2_profile" {

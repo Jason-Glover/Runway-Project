@@ -21,7 +21,7 @@ variable "protocol" {
 
 variable "customer_name" {
   type    = string
-  default = "GloverDemo"
+  default = "gloverdemo"
 }
 
 variable "ApplicationName" {
