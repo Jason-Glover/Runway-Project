@@ -297,7 +297,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_low" {
   }
 
   alarm_description = "This metric monitors ec2 ASG low cpu utilization"
-  alarm_actions     = [aws_autoscaling_policy.asg_cpu_high.arn]
+  alarm_actions     = [aws_autoscaling_policy.asg_cpu_low.arn]
 }
 
 # Data to import from Cloudformation Stack
