@@ -300,7 +300,8 @@ data "aws_cloudformation_export" "snsarn" {
   name = "TFIMGMGR-SNSTopicArn"
 }
 
-# block to create Cloudformation SNS Topic
+# block to create Cloudformation SNS Topic 
+# !!! Exports in this Code Block are Specific to Region US-EAST-1 !!!
 resource "aws_cloudformation_stack" "sns_topic" {
   name          = "${terraform.workspace}-Img-Mgr-SNS-Topic"
   template_body = <<STACK
