@@ -40,4 +40,3 @@ node_modules
 node_modules/*
 .terraform*
 .terraform.*
-Pipfile.lock
