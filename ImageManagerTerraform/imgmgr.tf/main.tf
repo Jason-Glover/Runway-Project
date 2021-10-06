@@ -195,6 +195,7 @@ resource "aws_lb_target_group" "alb_target" {
   port     = 80
   protocol = "HTTP"
   vpc_id   = data.terraform_remote_state.remote_state.outputs.vpc_id
+  deregistration_delay = 10
 }
 
 # ALB Listener
@@ -222,6 +223,9 @@ resource "aws_autoscaling_group" "ASG" {
   launch_template {
     id      = aws_launch_template.ASG_LT.id
     version = "$Latest"
+  }
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
@@ -379,6 +383,15 @@ resource "aws_cloudfront_distribution" "cf" {
     cached_methods = ["GET", "HEAD"]
     target_origin_id = "$CF-{terraform.workspace}-${var.ApplicationName}"
     cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+    viewer_protocol_policy = "redirect-to-https"
+  }
+
+  ordered_cache_behavior {
+    path_pattern = "/pics"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods = ["GET", "HEAD"]
+    target_origin_id = "$CF-{terraform.workspace}-${var.ApplicationName}"
+    cache_policy_id  = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
     viewer_protocol_policy = "redirect-to-https"
   }
 
