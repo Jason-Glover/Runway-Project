@@ -381,30 +381,30 @@ resource "aws_cloudfront_distribution" "cf" {
   price_class = "PriceClass_100"
   
   origin {
-    domain_name = aws_lb.alb.dns_name
-    origin_id = "$CF-{terraform.workspace}-${var.ApplicationName}"
+    domain_name              = aws_lb.alb.dns_name
+    origin_id                = "$CF-{terraform.workspace}-${var.ApplicationName}"
     custom_origin_config {
-      http_port = 80
-      https_port = 443
+      http_port              = 80
+      https_port             = 443
       origin_protocol_policy = "http-only"
-      origin_ssl_protocols = ["TLSv1.2"]
+      origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
   
   default_cache_behavior {
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods = ["GET", "HEAD"]
-    target_origin_id = "$CF-{terraform.workspace}-${var.ApplicationName}"
-    cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "$CF-{terraform.workspace}-${var.ApplicationName}"
+    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"
     viewer_protocol_policy = "redirect-to-https"
   }
 
   ordered_cache_behavior {
-    path_pattern = "/pics"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods = ["GET", "HEAD"]
-    target_origin_id = "$CF-{terraform.workspace}-${var.ApplicationName}"
-    cache_policy_id  = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    path_pattern           = "/pics"
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "$CF-{terraform.workspace}-${var.ApplicationName}"
+    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
     viewer_protocol_policy = "redirect-to-https"
   }
 
@@ -414,7 +414,7 @@ resource "aws_cloudfront_distribution" "cf" {
 
   restrictions {
     geo_restriction {
-      restriction_type = "none"
+      restriction_type     = "none"
     }
   }
 }
