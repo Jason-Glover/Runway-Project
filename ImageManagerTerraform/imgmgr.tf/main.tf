@@ -232,6 +232,7 @@ resource "aws_launch_template" "ASG_LT" {
   instance_type          = var.instance_type
   key_name               = var.SSH_Key
   vpc_security_group_ids = [aws_security_group.ec2.id]
+  update_default_version = true
   user_data              = base64encode(templatefile("${path.module}\\templates\\userdata.sh", { S3Bucket = aws_s3_bucket.imgmgr_bucket.id }))
   iam_instance_profile {
     name = "${aws_iam_instance_profile.ec2_profile.name}"
@@ -357,3 +358,37 @@ resource "aws_cloudformation_stack" "sns_topic" {
 STACK
 }
 
+# Cloudfront Distrubtion pointing to the ALB
+resource "aws_cloudfront_distribution" "cf" {
+  enabled = true
+  price_class = "PriceClass_100"
+  
+  origin {
+    domain_name = aws_lb.alb.dns_name
+    origin_id = "$CF-{terraform.workspace}-${var.ApplicationName}"
+    custom_origin_config {
+      http_port = 80
+      https_port = 443
+      origin_protocol_policy = "http-only"
+      origin_ssl_protocols = ["TLSv1.2"]
+    }
+  }
+  
+  default_cache_behavior {
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods = ["GET", "HEAD"]
+    target_origin_id = "$CF-{terraform.workspace}-${var.ApplicationName}"
+    cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+    viewer_protocol_policy = "redirect-to-https"
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+}
