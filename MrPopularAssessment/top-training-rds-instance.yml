@@ -1,0 +1,520 @@
+AWSTemplateFormatVersion: 2010-09-09
+Conditions:
+  CustomParameterGroup: !Not 
+    - !Equals 
+      - !Ref ParameterGroupName
+      - ''
+  DBSubnetGroupName: !Not 
+    - !Equals 
+      - !Ref DBSubnetGroupName
+      - ''
+  KmsKeyEnabled: !Not 
+    - !Equals 
+      - !Ref KmsKey
+      - ''
+  SnapshotSpecified: !Not 
+    - !Equals 
+      - !Ref RdsSnapshotIdentifier
+      - ''
+  SnsTopicSpecified: !Not 
+    - !Equals 
+      - !Join 
+        - ''
+        - !Ref SNSTopic
+      - ''
+  VpnAccessEnabled: !Not 
+    - !Equals 
+      - !Ref VPNSecurityGroup
+      - ''
+Description: RDS Infrastructure
+Mappings:
+  RdsMap:
+    aurora-mysql:
+      RdsEngine: aurora-mysql
+      RdsEngineVersion: ''
+      RdsLicenseModel: general-public-license
+      RdsMasterUsername: root
+      RdsParameterGroupName: default.aurora-mysql5.7
+      RdsPort: '3306'
+    aurora-postgres:
+      RdsEngine: aurora-postgresql
+      RdsEngineVersion: ''
+      RdsLicenseModel: postgresql-license
+      RdsMasterUsername: postgres
+      RdsParameterGroupName: default.aurora-postgresql9.6
+      RdsPort: '5432'
+    maria:
+      RdsEngine: mariadb
+      RdsEngineVersion: 10.0.17
+      RdsLicenseModel: general-public-license
+      RdsMasterUsername: root
+      RdsParameterGroupName: default.mariadb10.0
+      RdsPort: '3306'
+    mssql:
+      RdsEngine: sqlserver-se
+      RdsEngineVersion: 11.00.2100.60.v1
+      RdsLicenseModel: license-included
+      RdsMasterUsername: sa
+      RdsParameterGroupName: default.sqlserver-se-11.0
+      RdsPort: '1433'
+    mysql:
+      RdsEngine: mysql
+      RdsEngineVersion: 5.7.19
+      RdsLicenseModel: general-public-license
+      RdsMasterUsername: root
+      RdsParameterGroupName: default.mysql5.7
+      RdsPort: '3306'
+    postgres:
+      RdsEngine: postgres
+      RdsEngineVersion: 9.6.8
+      RdsLicenseModel: postgresql-license
+      RdsMasterUsername: postgres
+      RdsParameterGroupName: default.postgres9.6
+      RdsPort: '5432'
+Outputs:
+  RdsClientSecurityGroup:
+    Description: The ID of the RDS client security group associated with the environment
+    Value: !Ref RdsClientSecurityGroup
+  RdsDatabaseInstance:
+    Description: The name of the RDS instance for the environment
+    Value: !GetAtt 
+      - RdsDatabaseInstance
+      - Endpoint.Address
+  RdsMasterUsername:
+    Description: The username for the master username
+    Value: !FindInMap 
+      - RdsMap
+      - !Ref RdsEngineType
+      - RdsMasterUsername
+Parameters:
+  AllowMajorVersionUpgrade:
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+    Description: Enable automatic major version upgrades  - true or false
+    Type: String
+  ApplicationName:
+    Description: Name of application for which database will be used
+    Type: String
+  AutoMinorVersionUpgrade:
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'true'
+    Description: Enable automatic minor version upgrades - true or false
+    Type: String
+  BackupRetentionDays:
+    Default: '7'
+    Description: Number of days to retain backups (1-35)
+    MaxValue: '35'
+    MinValue: '1'
+    Type: Number
+  CpuComparisonOperator:
+    AllowedValues:
+      - GreaterThanOrEqualToThreshold
+      - GreaterThanThreshold
+      - LessThanThreshold
+      - LessThanOrEqualToThreshold
+    Default: GreaterThanOrEqualToThreshold
+    Description: Comparison operator type
+    Type: String
+  CpuEvaluationPeriods:
+    Default: '2'
+    Description: Number of periods to evaluate with base threshold
+    Type: String
+  CpuPeriod:
+    AllowedValues:
+      - '60'
+      - '300'
+      - '600'
+      - '900'
+      - '1800'
+      - '3600'
+    Default: '300'
+    Description: Period of time to apply the statistics (in seconds)
+    Type: Number
+  CpuStatistic:
+    AllowedValues:
+      - Average
+      - Minimum
+      - Maximum
+      - Sum
+      - SampleCount
+    Default: Average
+    Description: Statistic type to apply to metric
+    Type: String
+  CpuThreshold:
+    Default: '95'
+    Description: Percentage threshold to alert
+    MaxValue: '100'
+    MinValue: '1'
+    Type: Number
+  DBName:
+    Description: The initial db to be created
+    Type: String
+  DBPassword:
+    Description: Password for the administrative user
+    NoEcho: true
+    Type: String
+  DBSubnetGroupName:
+    Default: ''
+    Description: DB Subnet Group
+    Type: String
+  DiskComparisonOperator:
+    AllowedValues:
+      - GreaterThanOrEqualToThreshold
+      - GreaterThanThreshold
+      - LessThanThreshold
+      - LessThanOrEqualToThreshold
+    Default: LessThanOrEqualToThreshold
+    Description: Comparison operator type
+    Type: String
+  DiskEvaluationPeriods:
+    Default: '2'
+    Description: Number of periods to evaluate with base threshold
+    Type: String
+  DiskPeriod:
+    AllowedValues:
+      - '60'
+      - '300'
+      - '600'
+      - '900'
+      - '1800'
+      - '3600'
+    Default: '300'
+    Description: Period of time to apply the statistics (in seconds)
+    Type: Number
+  DiskStatistic:
+    AllowedValues:
+      - Average
+      - Minimum
+      - Maximum
+      - Sum
+      - SampleCount
+    Default: Minimum
+    Description: Statistic type to apply to metric
+    Type: String
+  DiskThreshold:
+    Default: '5000000000'
+    Description: Bytes left threshold to alert
+    MaxValue: '500000000000'
+    MinValue: '1000000000'
+    Type: Number
+  Encrypted:
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+    Description: Encrypted Volume at rest - true or false
+    Type: String
+  EnvironmentName:
+    Default: production
+    Description: Name of Environment
+    Type: String
+  KmsKey:
+    Default: ''
+    Description: >-
+      ARN for the AWS Key Management Service key - Blank uses default KMS key or
+      NO KMS key if Unencrypted
+    Type: String
+  MemoryComparisonOperator:
+    AllowedValues:
+      - GreaterThanOrEqualToThreshold
+      - GreaterThanThreshold
+      - LessThanThreshold
+      - LessThanOrEqualToThreshold
+    Default: LessThanOrEqualToThreshold
+    Description: Comparison operator type
+    Type: String
+  MemoryEvaluationPeriods:
+    Default: '2'
+    Description: Number of periods to evaluate with base threshold
+    Type: String
+  MemoryPeriod:
+    AllowedValues:
+      - '60'
+      - '300'
+      - '600'
+      - '900'
+      - '1800'
+      - '3600'
+    Default: '300'
+    Description: Period of time to apply the statistics (in seconds)
+    Type: Number
+  MemoryStatistic:
+    AllowedValues:
+      - Average
+      - Minimum
+      - Maximum
+      - Sum
+      - SampleCount
+    Default: Minimum
+    Description: Statistic type to apply to metric
+    Type: String
+  MemoryThreshold:
+    Default: '1000000000'
+    Description: Bytes left threshold to alert
+    MaxValue: '500000000000'
+    MinValue: '0'
+    Type: Number
+  MultiAZ:
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+    Description: MultiAZ - true or false
+    Type: String
+  ParameterGroupName:
+    Default: ''
+    Description: Optional RDS parameter group name to use
+    Type: String
+  RdsAllocatedStorage:
+    Default: '300'
+    Description: Storage to create for RDS databases (GB)
+    MaxValue: '3072'
+    MinValue: '5'
+    Type: Number
+  RdsEngineType:
+    AllowedValues:
+      - mssql
+      - mysql
+      - aurora-mysql
+      - maria
+      - aurora-postgres
+      - postgres
+    Description: Engine type to use for RDS instance
+    Type: String
+  RdsInstanceClass:
+    AllowedValues:
+      - db.t2.micro
+      - db.t2.small
+      - db.t2.medium
+      - db.m3.2xlarge
+      - db.m3.large
+      - db.m3.medium
+      - db.m3.xlarge
+      - db.m4.medium
+      - db.m4.large
+      - db.m4.xlarge
+      - db.m4.2xlarge
+      - db.m4.4xlarge
+      - db.m4.10xlarge
+      - db.r4.large
+      - db.r4.xlarge
+      - db.r4.2xlarge
+      - db.r4.4xlarge
+      - db.r4.8xlarge
+    Default: db.m3.large
+    Description: Instance type to use for RDS instance
+    Type: String
+  RdsSnapshotIdentifier:
+    Default: ''
+    Description: ARN of DB snapshot to restore from
+    Type: String
+  SNSTopic:
+    Default: ''
+    Description: >-
+      (Optional) SNS Topic (or list of topics) to associate with CloudWatch
+      alarms.
+    Type: CommaDelimitedList
+  VPNSecurityGroup:
+    Default: ''
+    Description: >-
+      VPN Security Group IDNOTE: Only enable this to allow RDS access over VPN
+      connection.
+    Type: String
+  VpcId:
+    Default: vpc-eadf0d8f
+    Description: VPC ID
+    Type: 'AWS::EC2::VPC::Id'
+Resources:
+  FreeStorageSpace:
+    Condition: SnsTopicSpecified
+    Properties:
+      ActionsEnabled: true
+      AlarmActions: !Ref SNSTopic
+      AlarmDescription: Storage Space Alarm for RDS
+      AlarmName: !Join 
+        - '-'
+        - - !Ref EnvironmentName
+          - FreeStorageSpace
+          - RDS
+          - alarm
+      ComparisonOperator: !Ref DiskComparisonOperator
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref RdsDatabaseInstance
+      EvaluationPeriods: !Ref DiskEvaluationPeriods
+      MetricName: FreeStorageSpace
+      Namespace: AWS/RDS
+      OKActions: !Ref SNSTopic
+      Period: !Ref DiskPeriod
+      Statistic: !Ref DiskStatistic
+      Threshold: !Ref DiskThreshold
+    Type: 'AWS::CloudWatch::Alarm'
+  FreeableMemory:
+    Condition: SnsTopicSpecified
+    Properties:
+      ActionsEnabled: true
+      AlarmActions: !Ref SNSTopic
+      AlarmDescription: Free memory Alarm for RDS
+      AlarmName: !Sub "${EnvironmentName}-FreeableMemory-RDS-alarm" 
+      ComparisonOperator: !Ref MemoryComparisonOperator
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref RdsDatabaseInstance
+      EvaluationPeriods: !Ref MemoryEvaluationPeriods
+      MetricName: FreeableMemory
+      Namespace: AWS/RDS
+      OKActions: !Ref SNSTopic
+      Period: !Ref MemoryPeriod
+      Statistic: !Ref MemoryStatistic
+      Threshold: !Ref MemoryThreshold
+    Type: 'AWS::CloudWatch::Alarm'
+  HighCPUAlarm:
+    Condition: SnsTopicSpecified
+    Properties:
+      ActionsEnabled: true
+      AlarmActions: !Ref SNSTopic
+      AlarmDescription: CPU Utilization Alrm for RDS
+      AlarmName: !Sub "${EnvironmentName}-CPUUtilization-RDS-alarm" 
+      ComparisonOperator: !Ref CpuComparisonOperator
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref RdsDatabaseInstance
+      EvaluationPeriods: !Ref CpuEvaluationPeriods
+      MetricName: CPUUtilization
+      Namespace: AWS/RDS
+      OKActions: !Ref SNSTopic
+      Period: !Ref CpuPeriod
+      Statistic: !Ref CpuStatistic
+      Threshold: !Ref CpuThreshold
+    Type: 'AWS::CloudWatch::Alarm'
+  RdsClientSecurityGroup:
+    Properties:
+      GroupDescription: !Sub "${ApplicationName}-RdsClientSecurityGroup-${EnvironmentName}"
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 0
+          IpProtocol: '-1'
+          ToPort: 65535
+      Tags:
+        - Key: Application
+          Value: !Ref ApplicationName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: Name
+          Value: !Sub "rds-clients-${ApplicationName}-${EnvironmentName}"
+      VpcId: !Ref VpcId
+    Type: 'AWS::EC2::SecurityGroup'
+  RdsDatabaseInstance:
+    Properties:
+      AllocatedStorage: !Ref RdsAllocatedStorage
+      AllowMajorVersionUpgrade: !Ref AllowMajorVersionUpgrade
+      AutoMinorVersionUpgrade: !Ref AutoMinorVersionUpgrade
+      BackupRetentionPeriod: !Ref BackupRetentionDays
+      DBInstanceClass: !Ref RdsInstanceClass
+      DBInstanceIdentifier: !Sub "${ApplicationName}-${EnvironmentName}" 
+      DBParameterGroupName: !If 
+        - CustomParameterGroup
+        - !Ref ParameterGroupName
+        - !FindInMap 
+          - RdsMap
+          - !Ref RdsEngineType
+          - RdsParameterGroupName
+      DBSnapshotIdentifier: !If 
+        - SnapshotSpecified
+        - !Ref RdsSnapshotIdentifier
+        - !Ref 'AWS::NoValue'
+      DBSubnetGroupName: !If 
+        - DBSubnetGroupName
+        - !Ref DBSubnetGroupName
+        - !Ref 'AWS::NoValue'
+      Engine: !FindInMap 
+        - RdsMap
+        - !Ref RdsEngineType
+        - RdsEngine
+      EngineVersion: !FindInMap 
+        - RdsMap
+        - !Ref RdsEngineType
+        - RdsEngineVersion
+      KmsKeyId: !If 
+        - KmsKeyEnabled
+        - !Ref KmsKey
+        - !Ref 'AWS::NoValue'
+      LicenseModel: !FindInMap 
+        - RdsMap
+        - !Ref RdsEngineType
+        - RdsLicenseModel
+      MasterUserPassword: !Ref DBPassword
+      MasterUsername: !FindInMap 
+        - RdsMap
+        - !Ref RdsEngineType
+        - RdsMasterUsername
+      MultiAZ: !Ref MultiAZ
+      Port: !FindInMap 
+        - RdsMap
+        - !Ref RdsEngineType
+        - RdsPort
+      PreferredBackupWindow: '03:00-04:00'
+      PreferredMaintenanceWindow: 'sat:06:00-sat:07:00'
+      StorageEncrypted: !Ref Encrypted
+      StorageType: gp2
+      Tags:
+        - Key: Application
+          Value: !Ref ApplicationName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: Name
+          Value: !Sub "${ApplicationName}-${EnvironmentName}" 
+      VPCSecurityGroups:
+        - !Ref RdsServerSecurityGroup
+    Type: 'AWS::RDS::DBInstance'
+  RdsServerSecurityGroup:
+    Properties:
+      GroupDescription: !Join 
+        - '-'
+        - - !Ref ApplicationName
+          - RdsServerSecurityGroup
+          - !Ref EnvironmentName
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 0
+          IpProtocol: '-1'
+          ToPort: 65535
+      SecurityGroupIngress:
+        - FromPort: !FindInMap 
+            - RdsMap
+            - !Ref RdsEngineType
+            - RdsPort
+          IpProtocol: tcp
+          SourceSecurityGroupId: !Ref RdsClientSecurityGroup
+          ToPort: !FindInMap 
+            - RdsMap
+            - !Ref RdsEngineType
+            - RdsPort
+      Tags:
+        - Key: Application
+          Value: !Ref ApplicationName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: Name
+          Value: !Sub "rds-server${ApplicationName}-${EnvironmentName}" 
+      VpcId: !Ref VpcId
+    Type: 'AWS::EC2::SecurityGroup'
+  VpnSgIngress:
+    Condition: VpnAccessEnabled
+    Properties:
+      FromPort: !FindInMap 
+        - RdsMap
+        - !Ref RdsEngineType
+        - RdsPort
+      GroupId: !Ref RdsServerSecurityGroup
+      IpProtocol: tcp
+      SourceSecurityGroupId: !Ref VPNSecurityGroup
+      ToPort: !FindInMap 
+        - RdsMap
+        - !Ref RdsEngineType
+        - RdsPort
+    Type: 'AWS::EC2::SecurityGroupIngress'

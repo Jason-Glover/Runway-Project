@@ -1,0 +1,100 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: The AWS CloudFormation template for this Serverless application
+Resources:
+  ServerlessDeploymentBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+  ServerlessDeploymentBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref ServerlessDeploymentBucket
+      PolicyDocument:
+        Statement:
+          - Action: 's3:*'
+            Effect: Allow  #change to allow principal
+            Principal: '*'
+            Resource: 
+              - !Sub "arn:${AWS::Partition}:s3:::${ServerlessDeploymentBucket}/*"
+              - !Sub "arn:${AWS::Partition}:s3:::${ServerlessDeploymentBucket}"
+            Condition:
+              Bool:
+                'aws:SecureTransport': false
+  DataloadLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: /aws/lambda/seed-rds-data-training-dataload
+  IamRoleLambdaExecution:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: 'seed-rds-data-training-lambda'
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogStream'
+                  - 'logs:CreateLogGroup'
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/seed-rds-data-training*:*"
+              - Effect: Allow
+                Action:
+                  - 'logs:PutLogEvents'
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/seed-rds-data-training*:*:*"
+      Path: /
+      RoleName: !Sub "seed-rds-data-training-${AWS::Region}-lamdaRole"
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+  DataloadLambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Code:
+        S3Bucket: !Ref ServerlessDeploymentBucket
+        S3Key: >-
+          serverless/seed-rds-data/training/1632422021323-2021-09-23T18:33:41.323Z/seed-rds-data.zip
+      Handler: index.handler
+      Runtime: python3.7
+      FunctionName: seed-rds-data-training-dataload
+      MemorySize: 1024
+      Timeout: 6
+      Role: !GetAtt 
+        - IamRoleLambdaExecution
+        - Arn
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-054d66e4b002d763a
+        SubnetIds:
+          - subnet-034c335e4d6c34bc9
+          - subnet-09af0ede8ab47bb0c
+    DependsOn:
+      - DataloadLogGroup
+  DataloadLambdaVersionrdnxPF00CvuAEqfLXOzfrn62fzeSLJQy3AcUr1brI:
+    Type: 'AWS::Lambda::Version'
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: !Ref DataloadLambdaFunction
+      CodeSha256: ooujYwidZf86iBjW5Gs68E6Bllk4X7yyx5ETu42GZwc=
+Outputs:
+  ServerlessDeploymentBucketName:
+    Value: !Ref ServerlessDeploymentBucket
+    Export:
+      Name: sls-seed-rds-data-training-ServerlessDeploymentBucketName
+  DataloadLambdaFunctionQualifiedArn:
+    Description: Current Lambda function version
+    Value: !Ref DataloadLambdaVersionrdnxPF00CvuAEqfLXOzfrn62fzeSLJQy3AcUr1brI
+    Export:
+      Name: sls-seed-rds-data-training-DataloadLambdaFunctionQualifiedArn

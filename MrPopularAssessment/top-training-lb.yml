@@ -1,0 +1,43 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Image Manager - 1.0.0
+Parameters:
+  VpcId:
+    Type: 'AWS::EC2::VPC::Id'
+    Description: The VPC the resources are launched within
+  LoadBalancerSubnets:
+    Type: 'List<AWS::EC2::Subnet::Id>'
+    Description: List of subnets for ELB
+Resources:
+  LbSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Allow http from internet
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+  ElasticLoadBalancer:
+    Type: 'AWS::ElasticLoadBalancing::LoadBalancer'
+    Properties:
+      Scheme: internet-facing
+      CrossZone: true
+      SecurityGroups:
+        - !Ref LbSG
+      Subnets: !Ref LoadBalancerSubnets
+      Listeners:
+        - LoadBalancerPort: '80'
+          InstancePort: '80'
+          Protocol: HTTP
+      HealthCheck:
+        Target: 'HTTP:80/'
+        HealthyThreshold: '2'
+        UnhealthyThreshold: '2'
+        Interval: '10'
+        Timeout: '5'
+Outputs:
+  ElasticLoadBalancer:
+    Value: !Ref ElasticLoadBalancer
+  LbSG:
+    Value: !Ref LbSG

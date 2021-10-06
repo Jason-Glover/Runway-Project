@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Bucket of parts - 0.1
+Resources:
+  EncryptionKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Protection for PII
+      Enabled: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: key-default-1
+        Statement:
+        - Sid: Enable IAM User Permissions
+          Effect: Allow
+          Principal:
+            AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+          Action: kms:*
+          Resource: '*'
+        # - Sid: Allow use of the key
+        #   Effect: Allow
+        #   Principal:
+        #     AWS: !Sub "arn:aws:iam::${AWS::AccountId}:user/Bob"
+        #   Action:
+        #   - kms:DescribeKey
+        #   - kms:Encrypt
+        #   - kms:Decrypt
+        #   - kms:ReEncrypt*
+        #   - kms:GenerateDataKey
+        #   - kms:GenerateDataKeyWithoutPlaintext
+        #   Resource: '*'
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: true
+            ServerSideEncryptionByDefault:
+              KMSMasterKeyID: !GetAtt EncryptionKey.Arn
+              SSEAlgorithm: 'aws:kms'
+Outputs:
+  S3BucketName:
+    Value: !Ref S3Bucket
+  S3BucketArn:
+    Value: !GetAtt S3Bucket.Arn
+  KeyId:
+    Value: !Ref EncryptionKey

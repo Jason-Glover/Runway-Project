@@ -1,0 +1,24 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: RDS SubnetGroup Creator
+Outputs:
+  DBSubnetGroup:
+    Description: Physical ID of the DB Subnet Group
+    Value: !Ref DBSubnetGroup
+Parameters:
+  EnvironmentName:
+    AllowedPattern: '[a-z0-9]*'
+    Default: production
+    Description: 'Name of Environment, all lowercase'
+    Type: String
+  PriSubnets:
+    Description: The ID of the Private Subnet of the environment.
+    Type: 'List<AWS::EC2::Subnet::Id>'
+Resources:
+  DBSubnetGroup:
+    Properties:
+      DBSubnetGroupDescription: RDS SubnetGroup
+      SubnetIds: !Ref PriSubnets
+      Tags:
+        - Key: Name
+          Value: !Sub "RDSSubnet-${EnvironmentName}"
+    Type: 'AWS::RDS::DBSubnetGroup'

@@ -1,0 +1,232 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: App of Trouble - 0.1
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: Environment to which this stack belongs
+  CustomerName:
+    Type: String
+  ApplicationName:
+    Type: String
+  ImageId:
+    Type: 'AWS::EC2::Image::Id'
+    Description: The AMI to base this instance off of
+  ElasticLoadBalancerName:
+    Type: String
+    Description: name of load balancer to add ASG to
+  LoadBalancerSg:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: The SG attached to the load balancer
+  VpcId:
+    Type: 'AWS::EC2::VPC::Id'
+    Description: The VPC the resources are launched within
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Subnet for instance to live within
+  AvailabilityZones:
+    Type: List<AWS::EC2::AvailabilityZone::Name>
+    Description: AZs supported by ASG
+  S3BucketName:
+    Type: String
+    Description: Application bucket name
+  S3BucketArn:
+    Type: String
+    Description: The ARN of the application bucket
+  RdsClientSgId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: The security group used to access the RDS instance
+  InstanceType:
+    Type: String
+    Description: Instance size
+    Default: t2.small
+    AllowedValues:
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - c3.large
+      - c3.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - d2.2xlarge
+      - d2.4xlarge
+      - d2.8xlarge
+      - d2.xlarge
+      - g2.2xlarge
+      - g2.8xlarge
+      - i2.2xlarge
+      - i2.4xlarge
+      - i2.8xlarge
+      - i2.xlarge
+      - m1.xlarge
+      - m3.2xlarge
+      - m3.large
+      - m3.medium
+      - m3.xlarge
+      - m4.10xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.large
+      - m4.xlarge
+      - r3.2xlarge
+      - r3.4xlarge
+      - r3.8xlarge
+      - r3.large
+      - r3.xlarge
+      - t2.large
+      - t2.medium
+      - t2.micro
+      - t2.small
+      - t3.large
+      - t3.medium
+      - t3.micro
+      - t3.small
+Resources:
+  InstanceProfile:
+    Properties:
+      Path: /
+      Roles:
+        - !Ref Role
+    Type: 'AWS::IAM::InstanceProfile'
+  Role:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+        Version: 2012-10-17
+      Path: /
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM"
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - 's3:GetObject'
+                Effect: Allow
+                Resource:
+                  - !Join
+                    - ''
+                    - - !Ref S3BucketArn
+                      - /*
+            Version: 2012-10-17
+          PolicyName: s3getputdelete
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - 'ssm:GetParameter'
+                Effect: Allow
+                Resource:
+                  - !Sub "arn:aws:ssm:*:*:parameter/${CustomerName}/${EnvironmentName}/*"
+            Version: 2012-10-17
+          PolicyName: ssmReadValues
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - 'ec2:DescribeTags'
+                  - 'cloudformation:DescribeStacks'
+                Effect: Allow
+                Resource:
+                  - '*'
+            Version: 2012-10-17
+          PolicyName: ec2desctags
+    Type: 'AWS::IAM::Role'
+  WebAppSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http traffic to ec2 instance
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref LoadBalancerSg
+  AppServerGroup:
+    Type: 'AWS::AutoScaling::AutoScalingGroup'
+    Properties:
+      MinSize: "1"
+      MaxSize: "1"
+      AvailabilityZones: !Ref AvailabilityZones
+      VPCZoneIdentifier: !Ref Subnets
+      HealthCheckGracePeriod: 300
+      HealthCheckType: ELB
+      LaunchConfigurationName: !Ref LaunchConfig
+      LoadBalancerNames:
+        - !Ref ElasticLoadBalancerName
+      Tags:
+        - Key: Name
+          Value: !Sub '${CustomerName}-${EnvironmentName}-${ApplicationName}'
+          PropagateAtLaunch: true
+        - Key: environment
+          Value: !Ref EnvironmentName
+          PropagateAtLaunch: true
+        - Key: application
+          Value: !Ref ApplicationName
+          PropagateAtLaunch: true
+  LaunchConfig:
+    Type: 'AWS::AutoScaling::LaunchConfiguration'
+    Properties:
+      ImageId: !Ref ImageId
+      InstanceType: !Ref InstanceType
+      AssociatePublicIpAddress: false
+      IamInstanceProfile: !Ref InstanceProfile
+      SecurityGroups:
+        - !Ref WebAppSg
+        - !Ref RdsClientSgId
+      UserData: !Base64
+        'Fn::Join':
+          - |+
+
+          - - '#!/bin/sh'
+            - yum install -y git jq
+            - amazon-linux-extras install -y nginx1
+            - pip3 install pipenv
+            - 'echo "export PATH="\$PATH:/usr/local/bin"" > localbin.sh'
+            - ''
+            - cd ~ec2-user/
+            - cat > ~/.ssh/config << EOF
+            - Host *
+            - '    StrictHostKeyChecking no'
+            - EOF
+            - chmod 600 ~/.ssh/config
+            - 'git clone https://github.com/tonyfruzza/buggy_app.git'
+            - cd buggy_app
+            - 'chown -R ec2-user:ec2-user .'
+            - cat > /etc/systemd/system/imgmgr.service << EOF
+            - '[Unit]'
+            - Description=Image manager app
+            - After=network.target
+            - ''
+            - '[Service]'
+            - User=ec2-user
+            - WorkingDirectory=/home/ec2-user/buggy_app
+            - ExecStart=/home/ec2-user/buggy_app/run.sh
+            - Restart=always
+            - ''
+            - '[Install]'
+            - WantedBy=multi-user.target
+            - EOF
+            - ''
+            - !Sub 'sed -i s/lats-image-data/${S3BucketName}/ app.py'
+            - systemctl daemon-reload
+            - systemctl start imgmgr
+            - ''
+            - cat > /etc/nginx/conf.d/myapp.conf << EOF
+            - 'server {'
+            - '   listen 80;'
+            - '   server_name localhost;'
+            - '   location / {'
+            - '        proxy_set_header Host \$http_host;'
+            - '        proxy_pass http://127.0.0.1:5000;'
+            - '    }'
+            - '}'
+            - EOF
+            - systemctl restart nginx.service
+            - ''

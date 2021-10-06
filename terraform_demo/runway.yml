@@ -1,0 +1,10 @@
+---
+# See full syntax at https://docs.onica.com/projects/runway
+deployments:
+  - modules:
+      - path: sampleapp.cfn
+      - path: tfdemoapp.tf
+      - path: hello-world.sls
+      # - etc...
+    regions:
+      - us-east-1

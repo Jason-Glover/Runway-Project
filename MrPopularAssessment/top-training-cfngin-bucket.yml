@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: 2010-09-09
+Conditions:
+  BucketNameProvided: !Or 
+    - !Not 
+      - !Equals 
+        - !Ref BucketName
+        - ''
+    - !Not 
+      - !Equals 
+        - !Ref BucketName
+        - undefined
+Description: runway.cfngin.blueprints.cfngin_bucket.CFNginBucket (v2.4.0)
+Outputs:
+  BucketArn:
+    Value: !GetAtt 
+      - Bucket
+      - Arn
+  BucketDomainName:
+    Value: !GetAtt 
+      - Bucket
+      - DomainName
+  BucketName:
+    Value: !Ref Bucket
+  BucketRegionalDomainName:
+    Value: !GetAtt 
+      - Bucket
+      - RegionalDomainName
+Parameters:
+  AccessControl:
+    AllowedValues:
+      - AuthenticatedRead
+      - AwsExecRead
+      - BucketOwnerFullControl
+      - BucketOwnerRead
+      - LogDeliveryWrite
+      - Private
+      - PublicRead
+      - PublicReadWrite
+    Default: Private
+    Description: >-
+      A canned access control list (ACL) that grants predefined permissions to
+      the bucket.
+    Type: String
+  BucketName:
+    Description: Name of the CFNgin bucket
+    Type: String
+  VersioningStatus:
+    AllowedValues:
+      - Enabled
+      - Suspended
+    Default: Enabled
+    Description: Status of the bucket's VersioningConfiguration
+    Type: String
+Resources:
+  Bucket:
+    Properties:
+      AccessControl: !Ref AccessControl
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      BucketName: !If 
+        - BucketNameProvided
+        - !Ref BucketName
+        - !Ref 'AWS::NoValue'
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerPreferred
+      Tags:
+        - Key: version
+          Value: 2.4.0
+      VersioningConfiguration:
+        Status: !Ref VersioningStatus
+    Type: 'AWS::S3::Bucket'

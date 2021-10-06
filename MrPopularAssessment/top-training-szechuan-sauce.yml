@@ -1,0 +1,50 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: SSM Doc for filling disks - 1.0
+Parameters:
+  ApplicationName:
+    Description: The target application tag
+    Type: String
+Resources:
+  SsmDoc:
+    Type: AWS::SSM::Document
+    Properties:
+      Content:
+        schemaVersion: '2.0'
+        description: fills a disk
+        parameters:
+          Times:
+            type: String
+            description: the number of iterations
+          SizeInMegs:
+            type: String
+            description: The number of megabytes each file should be
+        mainSteps:
+          - action: 'aws:runShellScript'
+            name: runShellScript
+            inputs:
+              runCommand:
+                - >-
+                  for i in {1..{{Times}}}; do mkdir -p /var/log/mess; cd
+                  /var/log/mess; dd if=/dev/urandom bs={{SizeInMegs}}M count=1
+                  of=file$i; done
+      DocumentType: Command
+  TaggedInstancesAssociation:
+    Type: AWS::SSM::Association
+    Properties:
+      AssociationName: NoMoreDisk
+      Name: !Ref SsmDoc
+      ApplyOnlyAtCronInterval: false
+      DocumentVersion: $LATEST
+      ScheduleExpression: "cron(0 0/30 * 1/1 * ? *)"
+      Parameters:
+        Times: ["1000"]
+        SizeInMegs: ["128"]
+      Targets:
+      - Key: tag:application
+        Values:
+        - !Ref ApplicationName
+      WaitForSuccessTimeoutSeconds: 300
+Outputs:
+  DocumentName:
+    Description: Name of the document created
+    Value: !Ref SsmDoc
