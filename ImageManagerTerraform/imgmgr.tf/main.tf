@@ -173,10 +173,7 @@ resource "aws_lb" "alb" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.sg_lb.id]
-  subnets            = [
-    data.terraform_remote_state.remote_state.outputs.Public_Subnet1,
-    data.terraform_remote_state.remote_state.outputs.Public_Subnet2
-    ]
+  subnets            = data.terraform_remote_state.remote_state.outputs.Public_Subnets
 }
 
 # ALB Target Group
@@ -207,10 +204,7 @@ resource "aws_autoscaling_group" "ASG" {
   health_check_grace_period = var.ASG_HC_GracePeriod
   health_check_type         = var.ASGHealthCheck
   desired_capacity          = var.ASGDesired
-  vpc_zone_identifier       = [
-    data.terraform_remote_state.remote_state.outputs.Private_Subnet1,
-    data.terraform_remote_state.remote_state.outputs.Private_Subnet2
-    ]
+  vpc_zone_identifier       = data.terraform_remote_state.remote_state.outputs.Private_Subnets
   target_group_arns         = [aws_lb_target_group.alb_target.arn]
   launch_template {
     id      = aws_launch_template.ASG_LT.id
