@@ -20,7 +20,7 @@ resource "aws_vpc" "vpc" {
   instance_tenancy     = "default"
   enable_dns_support   = true
   enable_dns_hostnames = true
-  tags = {
+  tags   = {
     Name = "${var.environment}-VPC"
   }
 }
@@ -28,7 +28,7 @@ resource "aws_vpc" "vpc" {
 # creation of IGW
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.vpc.id
-  tags = {
+  tags   = {
     Name = "${var.environment}-IGW"
   }
 }
@@ -36,7 +36,7 @@ resource "aws_internet_gateway" "igw" {
 # creation of Public Route Table
 resource "aws_route_table" "PublicRT" {
   vpc_id = aws_vpc.vpc.id
-  tags = {
+  tags   = {
     Name = "${var.environment}-PublicRT"
   }
 }
@@ -52,7 +52,7 @@ resource "aws_route" "public" {
 resource "aws_route_table" "PrivateRT" {
   count  = length(var.private_subnet_cidr_blocks)
   vpc_id = aws_vpc.vpc.id
-  tags = {
+  tags   = {
     Name = "${var.environment}-PrivateRT-${var.private_subnet_cidr_blocks[count.index]}"
   }
 }
