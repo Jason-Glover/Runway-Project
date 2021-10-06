@@ -226,8 +226,12 @@ resource "aws_autoscaling_group" "ASG" {
     id      = aws_launch_template.ASG_LT.id
     version = "$Latest"
   }
-  lifecycle {
-    create_before_destroy = true
+  instance_refresh {
+    strategy = "Rolling"
+    preferences {
+      min_healthy_percentage = 50
+    }
+    triggers = ["launch_template"]
   }
 }
 
@@ -243,9 +247,7 @@ resource "aws_launch_template" "ASG_LT" {
   iam_instance_profile {
     name = "${aws_iam_instance_profile.ec2_profile.name}"
   }
-  lifecycle {
-    create_before_destroy = true
-  }
+
   tag_specifications {
     resource_type = "instance"
     tags = {
