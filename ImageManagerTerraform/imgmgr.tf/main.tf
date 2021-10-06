@@ -3,11 +3,24 @@ terraform {
   backend "s3" {
     key = "imgmgr-app.tfstate"
   }
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 3.38"
+    }
+  }
 }
 
 # Provider and access setup
 provider "aws" {
-  region = var.region
+  profile = "default"
+  region  = var.region
+  default_tags {
+    tags = {
+      Environment = var.environment
+      Application = var.ApplicationName
+    }
+  }
 }
 
 # Pull Data from Remote State File
