@@ -9,7 +9,7 @@ Host *
     StrictHostKeyChecking no
 EOF
 chmod 600 ~/.ssh/config
-git clone https://github.com/spellingb/flask-aws-storage.git
+git clone https://github.com/spellingb/flask-aws-storage
 cd flask-aws-storage
 mkdir uploads
 chown -R ec2-user:ec2-user .
@@ -52,3 +52,4 @@ EOF
 systemctl restart nginx.service
 sudo yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm -y
 sudo yum install stress -y
+sudo yum install htop -y

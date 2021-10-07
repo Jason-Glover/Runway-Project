@@ -43,98 +43,53 @@ resource "aws_iam_instance_profile" "ec2_profile" {
   role = aws_iam_role.my-role.name
 }
 
-# create role
+# create ASG EC2 role, grant s3 access, and ec2 describe tags
 resource "aws_iam_role" "my-role" {
-  assume_role_policy = <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Action": [
-                "sts:AssumeRole"
-            ],
-            "Effect": "Allow",
-            "Principal": {
-                "Service": "ec2.amazonaws.com"
-            }
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
         }
+      },
     ]
-}
-EOF
+  })
+  
+  inline_policy {
+    name = "s3getputdelete"
+    policy = jsonencode({
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Action = [
+            "s3:GetObject",
+            "s3:PutObject",
+            "s3:DeleteObject",
+            "s3:ListBucket"
+          ]
+          Effect = "Allow"
+          Resource = [
+            "${aws_s3_bucket.imgmgr_bucket.arn}/*",
+            "${aws_s3_bucket.imgmgr_bucket.arn}"
+          ]
+        },
+        {
+          Action = ["ec2:DescribeTags"]
+          Effect = "Allow"
+          Resource = "*"
+        }
+      ]
+    })
+  }
 }
 
-# Assume AmazonEC2RoleforSSM
+# Assume AmazonEC2RoleforSSM for my ASG EC2 Role
 resource "aws_iam_role_policy_attachment" "aws-managed-policy-attachment" {
   role = "${aws_iam_role.my-role.name}"
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM"
-}
-
-# s3 Get/Put/Delete Policy
-resource "aws_iam_role_policy" "s3GetPut_Policy" {
-  name   = "s3getputdelete"
-  role   = aws_iam_role.my-role.id
-  policy = <<-EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Action": [
-                "s3:GetObject",
-                "s3:PutObject",
-                "s3:DeleteObject"
-            ],
-            "Resource": [
-                "${aws_s3_bucket.imgmgr_bucket.arn}/*"
-            ],
-            "Effect": "Allow"
-        }
-    ]
-}
-EOF
-}
-
-# s3 List Bucket Policy
-resource "aws_iam_role_policy" "s3List_Policy" {
-  name   = "s3listbucket"
-  role   = aws_iam_role.my-role.id
-  policy = <<-EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Action": [
-                "s3:ListBucket"
-            ],
-            "Resource": [
-                "${aws_s3_bucket.imgmgr_bucket.arn}"
-            ],
-            "Effect": "Allow"
-        }
-    ]
-}
-EOF
-}
-
-# EC2 Describe tags
-resource "aws_iam_role_policy" "Tags_Policy" {
-  name   = "ec2desctags"
-  role   = aws_iam_role.my-role.id
-  policy = <<-EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Action": [
-                "ec2:DescribeTags"
-            ],
-            "Resource": [
-                "*"
-            ],
-            "Effect": "Allow"
-        }
-    ]
-}
-EOF
 }
 
 # LB Security Group
@@ -233,14 +188,15 @@ resource "aws_autoscaling_group" "ASG" {
   target_group_arns         = [aws_lb_target_group.alb_target.arn]
   launch_template {
     id      = aws_launch_template.ASG_LT.id
-    version = "$Latest"
+    version = aws_launch_template.ASG_LT.latest_version
   }
   instance_refresh {
     strategy = "Rolling"
+    
     preferences {
       min_healthy_percentage = 50
     }
-    triggers = ["launch_template"]
+    triggers = ["tag", "launch_template"]
   }
 }
 
