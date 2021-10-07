@@ -41,7 +41,7 @@ provider "aws" {
   profile = "default"
   region  = var.region
   default_tags {
-    tags = {
+    tags  = {
       Environment = "${terraform.workspace}"
       Application = var.ApplicationName
     }
@@ -73,10 +73,10 @@ resource "aws_lb" "alb" {
 ###############################################
 
 resource "aws_lb_target_group" "alb_target" {
-  name     = "${terraform.workspace}-${var.ApplicationName}-ALB-TG"
-  port     = 80
-  protocol = "HTTP"
-  vpc_id   = data.terraform_remote_state.remote_state.outputs.vpc_id
+  name                 = "${terraform.workspace}-${var.ApplicationName}-ALB-TG"
+  port                 = 80
+  protocol             = "HTTP"
+  vpc_id               = data.terraform_remote_state.remote_state.outputs.vpc_id
   deregistration_delay = 10
 }
 
@@ -140,7 +140,7 @@ resource "aws_launch_template" "ASG_LT" {
 
   tag_specifications {
     resource_type = "instance"
-    tags = {
+    tags          = {
       Name = "${var.customer_name}-${var.ApplicationName}"
       Environment = "${var.environment}"
     }
