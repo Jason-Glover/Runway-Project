@@ -4,13 +4,15 @@ variable "region" {
 }
 
 variable "environment" {
-  type    = string
-  default = "dev"
+  description = "Deploy Environment"
+  type        = string
+  default     = "dev"
 }
 
 variable "email" {
-  type    = string
-  default = "jason.glover@rackspace.com"
+  description = "SNS Endpoint Email Address"
+  type        = string
+  default     = "jason.glover@rackspace.com"
 }
 
 variable "protocol" {
@@ -20,23 +22,27 @@ variable "protocol" {
 }
 
 variable "customer_name" {
-  type    = string
-  default = "gloverdemo"
+  description = "Customer Name for this Deployment"
+  type        = string
+  default     = "gloverdemo"
 }
 
 variable "ApplicationName" {
-  type    = string
-  default = "img-mgr"
+  description = "Name of the deployed application"
+  type        = string
+  default     = "img-mgr"
 }
 
 variable "SSH_Key" {
-  type    = string
-  default = "virginiakp"
+  description = "SSH Key to use for EC2 Instances"
+  type        = string
+  default     = "virginiakp"
 }
 
 variable "ami_id" {
-  type    = string
-  default = "ami-087c17d1fe0178315"
+  description = "Amazon AMI ID Image to apply to EC2"
+  type        = string
+  default     = "ami-087c17d1fe0178315"
 }
 
 variable "ASGHealthCheck" {
@@ -46,36 +52,43 @@ variable "ASGHealthCheck" {
 }
 
 variable "ASG_HC_GracePeriod" {
-  type    = number
-  default = 300
+  description = "ASG Health Check Grace Period"
+  type        = number
+  default     = 300
 }
 
 variable "ASGMin" {
-  type    = number
-  default = 2
+  description = "Minimum Number of EC2 Instances running in the ASG"
+  type        = number
+  default     = 2
 }
 
 variable "ASGMax" {
+  description = "Maximum Number of EC2 Instances running in the ASG"
   type    = number
   default = 4
 }
 
 variable "ASGDesired" {
+  description = "Desired Number of EC2 Instances running in the ASG"
   type    = number
   default = 2
 }
 
 variable "CPUHighPolicy" {
-  type    = string
-  default = "50"
+  description = "CPU Alarm High Threshold"
+  type        = string
+  default     = "50"
 }
 
 variable "CPULowPolicy" {
-  type    = string
-  default = "15"
+  description = "CPU Alarm Low Threshold"
+  type        = string
+  default     = "15"
 }
 
 variable "instance_type" {
-  type    = string
-  default = "t2.small"
+  description = "Type of EC2 Instance to Deploy"
+  type        = string
+  default     = "t2.small"
 }

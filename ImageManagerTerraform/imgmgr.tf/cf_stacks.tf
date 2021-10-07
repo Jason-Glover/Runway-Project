@@ -1,5 +1,8 @@
+######################################################################
 # block to create Cloudformation SNS Topic 
 # !!! Exports in this Code Block are Specific to Region US-EAST-1 !!!
+######################################################################
+
 resource "aws_cloudformation_stack" "sns_topic" {
   name          = "${terraform.workspace}-${var.ApplicationName}-SNS-Topic"
   template_body = <<STACK

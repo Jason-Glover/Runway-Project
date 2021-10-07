@@ -1,10 +1,15 @@
-# Instance Profile
+######################################################################
+# Instance Profile creation
+######################################################################
+
 resource "aws_iam_instance_profile" "ec2_profile" {
   role = aws_iam_role.my-role.name
 }
 
-
+######################################################################
 # create ASG EC2 role, grant s3 access, and ec2 describe tags
+######################################################################
+
 resource "aws_iam_role" "my-role" {
   name                = "${terraform.workspace}-${var.ApplicationName}-role"
   managed_policy_arns = ["arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM"]

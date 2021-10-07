@@ -23,7 +23,7 @@ resource "aws_security_group" "sg_lb" {
 }
 
 ###############################################
-# Server Security Group
+# EC2 Server Security Group
 ###############################################
 
 resource "aws_security_group" "ec2" {
