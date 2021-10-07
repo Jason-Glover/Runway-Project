@@ -1,22 +1,21 @@
-##################################################################################
-# Template to setup and configure Image Manager using the following AWS Resources
-# S3                                              - Line 56
-# ALB                                             - Line 64
-# ALB Target Groups                               - Line 76
-# ALB Listener                                    - Line 88
-# ASG                                             - Line 103
-# Launch Template                                 - Line 130
-# ASG CPU High Scaling Policy                     - Line 155
-# ASG CPU Low Scaling Policy                      - Line 167
-# CPU High Alarm for CPU High Scaling Policy      - Line 179
-# CPU Low Alarm for CPU High Scaling Policy       - Line 204
-# Cloudfront Distrubtion pointing to the ALB      - Line 226
-#***********************************************************
-# IAM Roles and Policies are found in iam.tf  
-# Security Groups are found in securitygroups.tf
-# Imported Data is found in dataimports.tf
-##################################################################################
-
+/*
+ Template to setup and configure Image Manager using the following AWS Resources
+ S3                                              - Line 56
+ ALB                                             - Line 64
+ ALB Target Groups                               - Line 76
+ ALB Listener                                    - Line 88
+ ASG                                             - Line 103
+ Launch Template                                 - Line 130
+ ASG CPU High Scaling Policy                     - Line 155
+ ASG CPU Low Scaling Policy                      - Line 167
+ CPU High Alarm for CPU High Scaling Policy      - Line 179
+ CPU Low Alarm for CPU High Scaling Policy       - Line 204
+ Cloudfront Distrubtion pointing to the ALB      - Line 226
+***********************************************************
+ IAM Roles and Policies are found in iam.tf  
+ Security Groups are found in securitygroups.tf
+ Imported Data is found in dataimports.tf
+*/
 
 
 ###############################################
