@@ -58,7 +58,7 @@ locals {
         systemctl restart nginx.service
         sudo yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm -y
         sudo yum install stress -y
-        sudo yum install htop -y   
+        sudo yum install htop -y
     UserData
 }
 
