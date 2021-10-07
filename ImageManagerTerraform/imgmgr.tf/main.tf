@@ -1,4 +1,27 @@
+##################################################################################
+# Template to setup and configure Image Manager using the following AWS Resources
+# S3                                              - Line 56
+# ALB                                             - Line 64
+# ALB Target Groups                               - Line 76
+# ALB Listener                                    - Line 88
+# ASG                                             - Line 103
+# Launch Template                                 - Line 130
+# ASG CPU High Scaling Policy                     - Line 155
+# ASG CPU Low Scaling Policy                      - Line 167
+# CPU High Alarm for CPU High Scaling Policy      - Line 179
+# CPU Low Alarm for CPU High Scaling Policy       - Line 204
+# Cloudfront Distrubtion pointing to the ALB      - Line 226
+#***********************************************************
+# IAM Roles and Policies are found in iam.tf  
+# Security Groups are found in securitygroups.tf
+# Imported Data is found in dataimports.tf
+##################################################################################
+
+
+
+###############################################
 # Backend setup
+###############################################
 terraform {
   backend "s3" {
     key = "imgmgr-app.tfstate"
@@ -11,7 +34,10 @@ terraform {
   }
 }
 
+###############################################
 # Provider and access setup
+###############################################
+
 provider "aws" {
   profile = "default"
   region  = var.region
@@ -23,148 +49,42 @@ provider "aws" {
   }
 }
 
-# Pull Data from Remote State File
-data "terraform_remote_state" "remote_state" {
-  backend = "s3"
-  config = {
-    bucket = "gloverdemo-common-tf-state-terraformstatebucket-1updgs65qx4od"
-    region = "${var.region}"
-    key    = "env:/common/imgmgr-vpc.tfstate"
-  }
-}
-
+###############################################
 # S3 Bucket Creation
+###############################################
+
 resource "aws_s3_bucket" "imgmgr_bucket" {
   bucket_prefix = "${var.customer_name}-${terraform.workspace}-"
 }
 
-# Instance Profile
-resource "aws_iam_instance_profile" "ec2_profile" {
-  role = aws_iam_role.my-role.name
-}
-
-# create ASG EC2 role, grant s3 access, and ec2 describe tags
-resource "aws_iam_role" "my-role" {
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-      },
-    ]
-  })
-  
-  inline_policy {
-    name = "s3getputdelete"
-    policy = jsonencode({
-      Version = "2012-10-17"
-      Statement = [
-        {
-          Action = [
-            "s3:GetObject",
-            "s3:PutObject",
-            "s3:DeleteObject",
-            "s3:ListBucket"
-          ]
-          Effect = "Allow"
-          Resource = [
-            "${aws_s3_bucket.imgmgr_bucket.arn}/*",
-            "${aws_s3_bucket.imgmgr_bucket.arn}"
-          ]
-        },
-        {
-          Action = ["ec2:DescribeTags"]
-          Effect = "Allow"
-          Resource = "*"
-        }
-      ]
-    })
-  }
-}
-
-# Assume AmazonEC2RoleforSSM for my ASG EC2 Role
-resource "aws_iam_role_policy_attachment" "aws-managed-policy-attachment" {
-  role = "${aws_iam_role.my-role.name}"
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM"
-}
-
-# LB Security Group
-resource "aws_security_group" "sg_lb" {
-  name               = "LbSg-${terraform.workspace}-${var.ApplicationName}"
-  description = "allow http from internet"
-  vpc_id      = data.terraform_remote_state.remote_state.outputs.vpc_id
-  ingress {
-    from_port        = 80
-    to_port          = 80
-    protocol         = "tcp"
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
-  }
-  egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
-  }
-}
-
-# Server Security Group
-resource "aws_security_group" "ec2" {
-  name        = "EC2Sg-${terraform.workspace}-${var.ApplicationName}"
-  description = "allow http from internet"
-  vpc_id      = data.terraform_remote_state.remote_state.outputs.vpc_id
-  ingress {
-    from_port = "80"
-    to_port   = "80"
-    protocol  = "tcp"
-
-    security_groups = [
-      "${aws_security_group.sg_lb.id}",
-    ]
-  }
-
-  ingress {
-    from_port        = 22
-    to_port          = 22
-    protocol         = "tcp"
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
-  }
-
-  egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
-  }
-}
-
-
+###############################################
 # ALB Creation
+###############################################
+
 resource "aws_lb" "alb" {
-  name               = "alb-${terraform.workspace}-${var.ApplicationName}"
+  name               = "${terraform.workspace}-${var.ApplicationName}-ALB"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.sg_lb.id]
   subnets            = data.terraform_remote_state.remote_state.outputs.Public_Subnets
 }
 
+###############################################
 # ALB Target Group
+###############################################
+
 resource "aws_lb_target_group" "alb_target" {
-  name     = "alb-tg-${terraform.workspace}-${var.ApplicationName}"
+  name     = "${terraform.workspace}-${var.ApplicationName}-ALB-TG"
   port     = 80
   protocol = "HTTP"
   vpc_id   = data.terraform_remote_state.remote_state.outputs.vpc_id
   deregistration_delay = 10
 }
 
+###############################################
 # ALB Listener
+###############################################
+
 resource "aws_lb_listener" "alb_listener" {
   load_balancer_arn = aws_lb.alb.arn
   port              = "80"
@@ -176,9 +96,12 @@ resource "aws_lb_listener" "alb_listener" {
   }
 }
 
+###############################################
 # Autoscaling Group
+###############################################
+
 resource "aws_autoscaling_group" "ASG" {
-  name                      = "asg-${terraform.workspace}-${var.ApplicationName}"
+  name                      = "${terraform.workspace}-${var.ApplicationName}-ASG"
   max_size                  = var.ASGMax
   min_size                  = var.ASGMin
   health_check_grace_period = var.ASG_HC_GracePeriod
@@ -196,19 +119,22 @@ resource "aws_autoscaling_group" "ASG" {
     preferences {
       min_healthy_percentage = 50
     }
-    triggers = ["tag", "launch_template"]
+    triggers = ["tag"]
   }
 }
 
+###############################################
 # ASG Launch Template
+###############################################
+
 resource "aws_launch_template" "ASG_LT" {
-  name                   = "lt-${terraform.workspace}-${var.ApplicationName}"
+  name                   = "${terraform.workspace}-${var.ApplicationName}-LaunchTemplate"
   image_id               = var.ami_id
   instance_type          = var.instance_type
   key_name               = var.SSH_Key
   vpc_security_group_ids = [aws_security_group.ec2.id]
   update_default_version = true
-  user_data              = base64encode(templatefile("${path.module}\\templates\\userdata.sh", { S3Bucket = aws_s3_bucket.imgmgr_bucket.id }))
+  user_data              = base64encode(local.UserData)  # userdata found in userdata.tf
   iam_instance_profile {
     name = "${aws_iam_instance_profile.ec2_profile.name}"
   }
@@ -222,27 +148,36 @@ resource "aws_launch_template" "ASG_LT" {
   }
 }
 
+###############################################
 # ASG CPU High Scaling Policy
+###############################################
+
 resource "aws_autoscaling_policy" "asg_cpu_high" {
-  name                   = "ASG-CPU-High-${terraform.workspace}-${var.ApplicationName}"
+  name                   = "${terraform.workspace}-${var.ApplicationName}-ASG-CPUHigh-SP"
   scaling_adjustment     = 1
   adjustment_type        = "ChangeInCapacity"
   cooldown               = 300
   autoscaling_group_name = aws_autoscaling_group.ASG.name
 }
 
+###############################################
 # ASG CPU Low Scaling Policy
+###############################################
+
 resource "aws_autoscaling_policy" "asg_cpu_low" {
-  name                   = "ASG-CPU-Low-${terraform.workspace}-${var.ApplicationName}"
+  name                   = "${terraform.workspace}-${var.ApplicationName}-CPULow-SP"
   scaling_adjustment     = -1
   adjustment_type        = "ChangeInCapacity"
   cooldown               = 300
   autoscaling_group_name = aws_autoscaling_group.ASG.name
 }
 
+###############################################
 # CPU High Alarm for CPU High Scaling Policy
+###############################################
+
 resource "aws_cloudwatch_metric_alarm" "cpu_high" {
-  alarm_name          = "${terraform.workspace}-${var.ApplicationName}-CPU-High-Alarm"
+  alarm_name          = "${terraform.workspace}-${var.ApplicationName}-CPUHigh-Alarm"
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = "1"
   metric_name         = "CPUUtilization"
@@ -262,9 +197,12 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
     ]
 }
 
+###############################################
 # CPU Low Alarm for CPU Low Scaling Policy
+###############################################
+
 resource "aws_cloudwatch_metric_alarm" "cpu_low" {
-  alarm_name          = "${terraform.workspace}-${var.ApplicationName}-CPU-Low-Alarm"
+  alarm_name          = "${terraform.workspace}-${var.ApplicationName}-CPULow-Alarm"
   comparison_operator = "LessThanOrEqualToThreshold"
   evaluation_periods  = "1"
   metric_name         = "CPUUtilization"
@@ -281,64 +219,17 @@ resource "aws_cloudwatch_metric_alarm" "cpu_low" {
   alarm_actions     = [aws_autoscaling_policy.asg_cpu_low.arn]
 }
 
-# Data to import from Cloudformation Stack
-data "aws_cloudformation_export" "snsarn" {
-  depends_on = [aws_cloudformation_stack.sns_topic]
-  name = "TFIMGMGR-SNSTopicArn"
-}
-
-# block to create Cloudformation SNS Topic 
-# !!! Exports in this Code Block are Specific to Region US-EAST-1 !!!
-resource "aws_cloudformation_stack" "sns_topic" {
-  name          = "${terraform.workspace}-Img-Mgr-SNS-Topic"
-  template_body = <<STACK
-{
-    "Outputs": {
-        "SNSTopicName": {
-            "Export": {
-                "Name": "TFIMGMGR-SNSTopicName"
-            },
-            "Value": {
-                "Fn::GetAtt": [
-                    "MySNSTopic",
-                    "TopicName"
-                ]
-            }
-        },
-        "SNSTopicArn": {
-            "Export": {
-                "Name": "TFIMGMGR-SNSTopicArn"
-            },
-            "Value": {
-                "Ref": "MySNSTopic"
-            }
-        }
-    },
-    "Resources": {
-        "MySNSTopic": {
-            "Properties": {
-                "Subscription": [
-                    {
-                        "Endpoint": "${var.email}",
-                        "Protocol": "${var.protocol}"
-                    }
-                ]
-            },
-            "Type": "AWS::SNS::Topic"
-        }
-    }
-}
-STACK
-}
-
+###############################################
 # Cloudfront Distrubtion pointing to the ALB
+###############################################
+
 resource "aws_cloudfront_distribution" "cf" {
   enabled = true
   price_class = "PriceClass_100"
   
   origin {
     domain_name              = aws_lb.alb.dns_name
-    origin_id                = "$CF-{terraform.workspace}-${var.ApplicationName}"
+    origin_id                = "${terraform.workspace}-${var.ApplicationName}-CloudFront"
     custom_origin_config {
       http_port              = 80
       https_port             = 443
@@ -350,7 +241,7 @@ resource "aws_cloudfront_distribution" "cf" {
   default_cache_behavior {
     allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = "$CF-{terraform.workspace}-${var.ApplicationName}"
+    target_origin_id       = "${terraform.workspace}-${var.ApplicationName}-CloudFront"
     cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"
     viewer_protocol_policy = "redirect-to-https"
   }
@@ -359,7 +250,7 @@ resource "aws_cloudfront_distribution" "cf" {
     path_pattern           = "/pics"
     allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = "$CF-{terraform.workspace}-${var.ApplicationName}"
+    target_origin_id       = "${terraform.workspace}-${var.ApplicationName}-CloudFront"
     cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
     viewer_protocol_policy = "redirect-to-https"
   }
