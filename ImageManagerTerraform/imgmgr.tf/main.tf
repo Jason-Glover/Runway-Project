@@ -1,17 +1,6 @@
 /*
- Template to setup and configure Image Manager using the following AWS Resources
- S3                                              - Line 56
- ALB                                             - Line 64
- ALB Target Groups                               - Line 76
- ALB Listener                                    - Line 88
- ASG                                             - Line 103
- Launch Template                                 - Line 130
- ASG CPU High Scaling Policy                     - Line 155
- ASG CPU Low Scaling Policy                      - Line 167
- CPU High Alarm for CPU High Scaling Policy      - Line 179
- CPU Low Alarm for CPU High Scaling Policy       - Line 204
- Cloudfront Distrubtion pointing to the ALB      - Line 226
-***********************************************************
+ Template to setup and configure Image Manager 
+***********************************************
  IAM Roles and Policies are found in iam.tf  
  Security Groups are found in securitygroups.tf
  Imported Data is found in dataimports.tf
@@ -81,7 +70,7 @@ resource "aws_lb_target_group" "alb_target" {
 }
 
 ###############################################
-# ALB Listener
+# ALB Listener to 80 on EC2
 ###############################################
 
 resource "aws_lb_listener" "alb_listener" {
@@ -93,6 +82,30 @@ resource "aws_lb_listener" "alb_listener" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.alb_target.arn
   }
+}
+
+###############################################
+# EC2 Bastian Host
+###############################################
+
+resource "aws_instance" "bastian" {
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
+  key_name               = aws_key_pair.my_keypair.key_name
+  subnet_id              = data.terraform_remote_state.remote_state.outputs.Public_Subnet1
+  vpc_security_group_ids = [aws_security_group.bastian.id]
+  tags = {
+    Name = "${terraform.workspace}-${var.ApplicationName}-Bastian"
+  }
+}
+
+###############################################
+# Create SSH Key Pair using local ssh pub key
+###############################################
+
+resource "aws_key_pair" "my_keypair" {
+    key_name = "${var.region}_keypair"
+    public_key = "${file("~/.ssh/id_rsa.pub")}"
 }
 
 ###############################################
@@ -130,7 +143,7 @@ resource "aws_launch_template" "ASG_LT" {
   name                   = "${terraform.workspace}-${var.ApplicationName}-LaunchTemplate"
   image_id               = var.ami_id
   instance_type          = var.instance_type
-  key_name               = var.SSH_Key
+  key_name               = aws_key_pair.my_keypair.key_name
   vpc_security_group_ids = [aws_security_group.ec2.id]
   update_default_version = true
   user_data              = base64encode(local.UserData)  # userdata found in userdata.tf
