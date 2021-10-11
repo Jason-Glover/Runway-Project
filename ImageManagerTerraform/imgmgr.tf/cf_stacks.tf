@@ -1,5 +1,5 @@
 ######################################################################
-# block to create Cloudformation SNS Topic 
+# block to create Cloudformation SNS Topic
 # !!! Exports in this Code Block are Specific to Region US-EAST-1 !!!
 ######################################################################
 
@@ -22,9 +22,6 @@ resource "aws_cloudformation_stack" "sns_topic" {
     },
     "Outputs": {
         "SNSTopicName": {
-            "Export": {
-                "Name": "TFIMGMGR-SNSTopicName"
-            },
             "Value": {
                 "Fn::GetAtt": [
                     "MySNSTopic",
@@ -33,14 +30,11 @@ resource "aws_cloudformation_stack" "sns_topic" {
             }
         },
         "SNSTopicArn": {
-            "Export": {
-                "Name": "TFIMGMGR-SNSTopicArn"
-            },
             "Value": {
                 "Ref": "MySNSTopic"
             }
         }
-    }    
+    }
 }
 STACK
 }
