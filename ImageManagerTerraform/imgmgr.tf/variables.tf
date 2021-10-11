@@ -6,7 +6,7 @@ variable "region" {
 variable "environment" {
   description = "Deploy Environment"
   type        = string
-  default     = "dev"
+  default     = "${terraform.workspace}"
 }
 
 variable "email" {
