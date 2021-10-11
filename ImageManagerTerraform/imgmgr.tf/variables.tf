@@ -3,12 +3,6 @@ variable "region" {
   type        = string
 }
 
-variable "environment" {
-  description = "Deploy Environment"
-  type        = string
-  default     = "${terraform.workspace}"
-}
-
 variable "email" {
   description = "SNS Endpoint Email Address"
   type        = string

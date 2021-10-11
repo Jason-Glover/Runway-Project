@@ -155,7 +155,7 @@ resource "aws_launch_template" "ASG_LT" {
     resource_type = "instance"
     tags          = {
       Name = "${terraform.workspace}-${var.customer_name}-${var.ApplicationName}"
-      Environment = "${var.environment}"
+      Environment = "${terraform.workspace}"
     }
   }
 }
