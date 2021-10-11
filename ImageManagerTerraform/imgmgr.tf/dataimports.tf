@@ -14,7 +14,7 @@ data "aws_cloudformation_export" "snsarn" {
 data "terraform_remote_state" "remote_state" {
   backend = "s3"
   config = {
-    bucket = "gloverdemo-common-tf-state-terraformstatebucket-1updgs65qx4od"
+    bucket = "gloverdemo-common-tf-state-terraformstatebucket-x7rkl3frfzy"
     region = "${var.region}"
     key    = "env:/common/imgmgr-vpc.tfstate"
   }

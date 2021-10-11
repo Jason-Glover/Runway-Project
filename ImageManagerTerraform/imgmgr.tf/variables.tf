@@ -12,7 +12,7 @@ variable "environment" {
 variable "email" {
   description = "SNS Endpoint Email Address"
   type        = string
-  default     = "jason.glover@rackspace.com"
+  default     = "tony.fruzza@rackspace.com"
 }
 
 variable "protocol" {
@@ -36,7 +36,7 @@ variable "ApplicationName" {
 variable "SSH_Key" {
   description = "SSH Key to use for EC2 Instances"
   type        = string
-  default     = "virginiakp"
+  default     = "best-customer-us-east-2"
 }
 
 variable "ami_id" {

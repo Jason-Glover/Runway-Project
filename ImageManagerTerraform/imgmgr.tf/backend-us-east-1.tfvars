@@ -1,3 +1,3 @@
-bucket         = "gloverdemo-common-tf-state-terraformstatebucket-1updgs65qx4od"
 region         = "us-east-1"
-dynamodb_table = "gloverdemo-common-tf-state-TerraformStateTable-MVILXLIE9RW7"
+bucket         = "gloverdemo-common-tf-state-terraformstatebucket-x7rkl3frfzy"
+dynamodb_table = "gloverdemo-common-tf-state-TerraformStateTable-BAPFYLMY2QV2"
