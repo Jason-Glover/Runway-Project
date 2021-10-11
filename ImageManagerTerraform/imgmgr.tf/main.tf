@@ -91,7 +91,7 @@ resource "aws_lb_listener" "alb_listener" {
 resource "aws_instance" "bastian" {
   ami                    = var.ami_id
   instance_type          = var.instance_type
-  key_name               = aws_key_pair.my_keypair.key_name
+  key_name               = var.SSH_Key
   subnet_id              = data.terraform_remote_state.remote_state.outputs.Public_Subnet1
   vpc_security_group_ids = [aws_security_group.bastian.id]
   tags = {
@@ -104,8 +104,8 @@ resource "aws_instance" "bastian" {
 ###############################################
 
 resource "aws_key_pair" "my_keypair" {
-    key_name = "${var.region}_keypair"
-    public_key = "${file("~/.ssh/id_rsa.pub")}"
+  key_name = terraform.workspace == "dev" ? "${var.region}_keypair" : "${terraform.workspace}-${var.region}_keypair"
+  public_key = "${file("~/.ssh/id_rsa.pub")}"
 }
 
 ###############################################
@@ -155,7 +155,7 @@ resource "aws_launch_template" "ASG_LT" {
     resource_type = "instance"
     tags          = {
       Name = "${var.customer_name}-${var.ApplicationName}"
-      Environment = "${var.environment}"
+      Environment = "${terraform.workspace}"
     }
   }
 }
@@ -205,7 +205,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
   alarm_description = "This metric monitors ec2 ASG high cpu utilization"
   alarm_actions     = [
     aws_autoscaling_policy.asg_cpu_high.arn,
-    data.aws_cloudformation_export.snsarn.value
+    data.aws_cloudformation_stack.snsarn.outputs.SNSTopicArn
     ]
 }
 

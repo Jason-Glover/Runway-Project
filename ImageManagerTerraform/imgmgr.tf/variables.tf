@@ -3,12 +3,6 @@ variable "region" {
   type        = string
 }
 
-variable "environment" {
-  description = "Deploy Environment"
-  type        = string
-  default     = "${terraform.workspace}"
-}
-
 variable "email" {
   description = "SNS Endpoint Email Address"
   type        = string
@@ -36,7 +30,7 @@ variable "ApplicationName" {
 variable "SSH_Key" {
   description = "SSH Key to use for EC2 Instances"
   type        = string
-  default     = "virginiakp"
+  default     = "us-east-1_keypair"
 }
 
 variable "ami_id" {
