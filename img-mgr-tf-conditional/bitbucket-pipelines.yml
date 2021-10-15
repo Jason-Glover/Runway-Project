@@ -1,0 +1,19 @@
+image: jnglover32/top-pipeline:latest
+# PipelineSettings
+pipelines:
+  default:
+    - step:
+        script:
+          - |
+            if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+               echo "AWS credentials not found; skipping deployment...";
+            elif [ -z "$BITBUCKET_BRANCH" ]; then
+               echo "Current branch not found; skipping deployment...";
+            elif [[ "$BITBUCKET_BRANCH" != ENV-* ]] && [[ "$BITBUCKET_BRANCH" != master ]]; then
+               echo "Current branch does not appear to be a valid environment; skipping deployment...";
+            else
+              echo "We are deploying..."
+              cd ImageManagerTerraform
+              runway deploy
+            fi
+            

@@ -1,0 +1,11 @@
+---
+# See full syntax at https://docs.onica.com/projects/runway
+deployments:
+  - modules:
+      - path: vpc.tf
+      - path: imgmgr.tf
+      # - etc...
+    regions:
+      - us-east-1
+    module_options:
+      terraform_version: 1.0.8
