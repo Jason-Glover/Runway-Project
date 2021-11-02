@@ -1,0 +1,11 @@
+Resources:
+  WebInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-02e136e904f3da870
+      KeyName: my-key
+      Tags:
+        -
+          Key: Name
+          Value: webserver

@@ -1,0 +1,27 @@
+# Name must start with portfolio
+name: portfolio-dev2
+description: portfolio to install custom resources
+owner: jason.glover@rackspace.com
+products:
+- name: vpc-product-dev2
+  template: product-vpc-2.yaml
+  owner: jason.glover@rackspace.com
+  description: creates a vpc
+- name: dynamodb-product-dev2
+  template: product-dynamodb-2.yaml
+  owner: jason.glover@rackspace.com
+  description: creates a dynamodb table
+- name: ec2-product-dev2
+  template: product-ec2-2.yaml
+  owner: jason.glover@rackspace.com
+  description: creates an ec2 instance
+accounts:
+- identifier: AWS Account
+  number: 569020019201
+tags:
+- Key: Group
+  Value: Developers
+- Key: Environment
+  Value: Dev
+principals:
+- group/SC-Product-Dev2-UserGroup

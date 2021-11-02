@@ -1,0 +1,26 @@
+service: Lambda-CodePipeline-CodeCommit-Merge
+package:
+  exclude:
+    - 'node_modules/**'
+provider:
+  name: aws
+  runtime: python3.8
+  logRetentionInDays: 1
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - 'cloudwatch:*'
+        - 'logs:*'
+        - 'lambda:*'
+        - 'codepipeline:*'
+        - 'codecommit:*'
+      Resource: '*'
+
+functions:
+  merge:
+    handler: ccmerge.lambda_handler
+
+resources:
+  Outputs:
+    LambdaName:
+      Value: !Ref MergeLambdaFunction

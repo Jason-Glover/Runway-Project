@@ -1,0 +1,570 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: pipeline to service catalog
+Parameters:
+  RepositoryName:
+    Description: >
+      Name of the AWS CodeCommit that you wish to create, where you can push the code related to Service Catalog
+    Type: String
+  LambdaCCMergeArn:
+    Description: Lambda Function to create Pull Request and Merge that Pull Request
+    Type: String
+  LambdaServiceCatalogLC:
+    Description: Lambda Function to create Service Catalog Product Launch Constraint
+    Type: String
+  SNSEmail:
+    Description: Enter Email Address for CloudWatch Alarm Notification
+    Type: String
+    Default: jason.glover@rackspace.com
+  ConstraintRole:
+    Description: Role to add to Launch Constraint for Service Catalog
+    Type: String
+    Default: SC-Constraint-Dev
+  Group1:
+    Description: User group name for access to Service Catalog Portfolio Products
+    Type: String
+    Default: SC-Product-Dev1-UserGroup
+  Group2:
+    Description: User group name for access to Service Catalog Portfolio Products
+    Type: String
+    Default: SC-Product-Dev2-UserGroup
+Resources:
+  SNSCodePipeline:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+      - Endpoint:
+         !Ref 'SNSEmail'
+        Protocol: email
+  SNSPipelinePolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref SNSCodePipeline
+      PolicyDocument:
+        Version: 2012-10-17
+        Id: "__default_policy_ID"
+        Statement:
+          - Sid: CodeStarNotifications_publish
+            Effect: Allow
+            Principal:
+              Service:
+                - codestar-notifications.amazonaws.com
+                - events.amazonaws.com #add for potential event bridge notification
+            Action:
+              - SNS:Publish
+            Resource:
+              - !Ref SNSCodePipeline
+          - Sid: __default_statement_ID
+            Effect: Allow
+            Principal:
+              AWS: '*'
+            Action:
+              - SNS:GetTopicAttributes
+              - SNS:SetTopicAttributes
+              - SNS:AddPermission
+              - SNS:RemovePermission
+              - SNS:DeleteTopic
+              - SNS:Subscribe
+              - SNS:ListSubscriptionsByTopic
+              - SNS:Publish
+              - SNS:Receive
+            Resource:
+              - !Ref SNSCodePipeline
+            Condition:
+              StringEquals:
+                AWS:SourceOwner: !Sub ${AWS::AccountId}
+  SCConstrainVPCEC:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref ConstraintRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "servicecatalog.amazonaws.com"
+            Action:
+              - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+        - "arn:aws:iam::aws:policy/AWSCloudFormationFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        - "arn:aws:iam::aws:policy/AWSKeyManagementServicePowerUser"
+        - "arn:aws:iam::aws:policy/AmazonVPCFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonSSMFullAccess"
+        - "arn:aws:iam::aws:policy/IAMFullAccess"
+        - "arn:aws:iam::aws:policy/AWSServiceCatalogAdminFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+  Dev1Group:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Ref Group1
+      Path: /
+      Policies:
+        -
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: VisualEditor0
+                Effect: Allow
+                Action:
+                  - 'iam:GetRole'
+                  - 'iam:PassRole'
+                Resource: !Sub 'arn:aws:iam::569020019201:role/${SCConstrainVPCEC}'
+          PolicyName: SC-Product-Dev1-Policy
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSServiceCatalogEndUserFullAccess
+
+  Dev2Group:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Ref Group2
+      Path: /
+      Policies:
+        - PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: VisualEditor0
+                Effect: Allow
+                Action:
+                  - 'iam:GetRole'
+                  - 'iam:PassRole'
+                Resource: !Sub 'arn:aws:iam::569020019201:role/${SCConstrainVPCEC}'
+          PolicyName: SC-Product-Dev2-Policy
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSServiceCatalogEndUserFullAccess
+  ServiceCatalogRepo:
+    Type: AWS::CodeCommit::Repository
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      RepositoryDescription: Holds Service Catalog code
+      RepositoryName: !Ref RepositoryName
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+  PipeLineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub pipeline-role-${AWS::StackName}
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - codepipeline.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        -
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - codepipeline:*
+                  - iam:ListRoles
+                  - cloudformation:*
+                  - codecommit:List*
+                  - codecommit:Get*
+                  - codecommit:GitPull
+                  - codecommit:UploadArchive
+                  - codecommit:CancelUploadArchive
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                  - iam:PassRole
+                  - s3:ListAllMyBuckets
+                  - s3:GetBucketLocation
+                  - lambda:InvokeFunction
+                  - lambda:ListFunctions
+                  - lambda:GetFunctionConfiguration
+                  - sns:Publish
+                Resource:
+                  - "*"
+              -
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetBucketPolicy
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                 - !Join ['',['arn:aws:s3:::',!Ref ArtifactBucket, '/*']]
+                 - !Join ['',['arn:aws:s3:::',!Ref ArtifactBucket]]
+          PolicyName: !Sub ${AWS::StackName}-policy-${AWS::Region}
+  BuildProjectRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub CodeBuildRole--${AWS::StackName}
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+  BuildProjectPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub CodeBuildPolicy--${AWS::StackName}
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: VisualEditor0
+            Effect: Allow
+            Action:
+              - 'ecr:GetRegistryPolicy'
+              - 'ecr:DescribeRegistry'
+              - 'ecr:GetAuthorizationToken'
+              - 'cloudformation:*'
+            Resource: '*'
+          - Sid: VisualEditor1
+            Effect: Allow
+            Action:
+              - 'ecr:DescribeImageScanFindings'
+              - 'ecr:GetLifecyclePolicyPreview'
+              - 'ecr:GetDownloadUrlForLayer'
+              - 'ecr:DescribeImageReplicationStatus'
+              - 'ecr:ListTagsForResource'
+              - 's3:ListBucket'
+              - 'ecr:ListImages'
+              - 'logs:CreateLogGroup'
+              - 'logs:PutLogEvents'
+              - 's3:GetBucketPolicy'
+              - 's3:PutObject'
+              - 's3:GetObject'
+              - 'logs:CreateLogStream'
+              - 'ecr:BatchGetImage'
+              - 'ecr:DescribeImages'
+              - 'ecr:DescribeRepositories'
+              - 'ecr:BatchCheckLayerAvailability'
+              - 'ecr:GetLifecyclePolicy'
+              - 'ecr:GetRepositoryPolicy'
+              - 'SNS:Publish'
+            Resource:
+              - !Join ['',['arn:aws:s3:::',!Ref ArtifactBucket, '/*']]
+              - !Join ['',['arn:aws:s3:::',!Ref ArtifactBucket]]
+              - 'arn:aws:logs:*:*:*'
+              - arn:aws:ecr:*:569020019201:repository/*
+      Roles:
+        -
+          !Ref BuildProjectRole
+  CodeCheck:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${AWS::StackName}-CodeCheck
+      Description: !Sub ${AWS::StackName}-CodeCheck
+      ServiceRole: !GetAtt BuildProjectRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        ImagePullCredentialsType: CODEBUILD
+        EnvironmentVariables:
+          - Name: S3Bucket
+            Value: !Ref ArtifactBucket
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: |
+          version: 0.1
+          phases:
+            install:
+              commands:
+                - printenv
+            build:
+              on-failure: ABORT
+              commands:
+                - ls -R $PWD/portfolio-*/* | grep -v "mapping.yaml" > files.txt
+                - cat files.txt
+                - cat files.txt | while read line; do  echo $line; aws cloudformation validate-template --template-body file://$line; if [ $? -ne 0 ]; then exit 1; fi; done
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-CodeCheck
+  LambdaBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${AWS::StackName}-CodeBuild
+      Description: !Sub ${AWS::StackName}-codebuild
+      ServiceRole: !GetAtt BuildProjectRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: 569020019201.dkr.ecr.us-east-1.amazonaws.com/code-build-container:latest
+        ImagePullCredentialsType: CODEBUILD
+        EnvironmentVariables:
+          - Name: S3Bucket
+            Value: !Ref ArtifactBucket
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: |
+          version: 0.1
+          phases:
+            install:
+              commands:
+                - printenv
+                - cd /root/scripts && pip install --requirement requirements.txt --target "$PWD"
+            build:
+              on-failure: ABORT
+              commands:
+                - cd /root/scripts && aws cloudformation package --template-file lambda-cloudformation.yaml --s3-bucket $S3Bucket --s3-prefix catalog-sync-lambda/codebuild --output-template-file samtemplate.yaml
+          artifacts:
+            files: /root/scripts/samtemplate.yaml
+            discard-paths: yes
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-CodeBuild
+  CFDeployerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub cfdeploy-role-${AWS::StackName}
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - cloudformation.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+  CFDeployerPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub cfdeployer-policy-${AWS::StackName}
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - lambda:AddPermission
+              - lambda:CreateFunction
+              - lambda:DeleteFunction
+              - lambda:InvokeFunction
+              - lambda:RemovePermission
+              - lambda:UpdateFunctionCode
+              - lambda:GetFunctionConfiguration
+              - lambda:GetFunction
+              - lambda:UpdateFunctionConfiguration
+              - iam:CreateRole
+              - iam:CreatePolicy
+              - iam:GetRole
+              - iam:DeleteRole
+              - iam:PutRolePolicy
+              - iam:PassRole
+              - iam:DeleteRolePolicy
+              - cloudformation:*
+              - SNS:Publish
+            Resource: "*"
+          -
+            Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:GetBucketPolicy
+              - s3:GetObject
+              - s3:ListBucket
+            Resource:
+             - !Join ['',['arn:aws:s3:::',!Ref ArtifactBucket, '/*']]
+             - !Join ['',['arn:aws:s3:::',!Ref ArtifactBucket]]
+      Roles:
+        -
+          !Ref CFDeployerRole
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      RoleArn: !GetAtt PipeLineRole.Arn
+      Name: !Ref AWS::StackName
+      Stages:
+        - Name: Dev-Source-Code-Checkout
+          Actions:
+            - Name: Dev-Branch-Updated
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Version: '1'
+                Provider: CodeCommit
+              Configuration:
+                RepositoryName: !GetAtt ServiceCatalogRepo.Name
+                BranchName: dev
+              OutputArtifacts:
+                - Name: SCCheckoutArtifact
+              RunOrder: 1
+        -
+          Name: CodeValidate
+          Actions:
+          -
+            Name: Dev-Code-Commit-Check
+            ActionTypeId:
+              Category: Test
+              Owner: AWS
+              Version: '1'
+              Provider: CodeBuild
+            Configuration:
+              ProjectName: !Ref CodeCheck
+            RunOrder: 1
+            InputArtifacts:
+              - Name: SCCheckoutArtifact
+        -
+          Name: Pull-Request-Approval-and-Merge
+          Actions:
+          -
+            Name: PullRequest-Merge-Repo-LambdaFn
+            ActionTypeId:
+              Category: Invoke
+              Owner: AWS
+              Version: '1'
+              Provider: Lambda
+            Configuration:
+              FunctionName: !Ref LambdaCCMergeArn
+            RunOrder: 1
+            InputArtifacts: []
+            OutputArtifacts: []
+        -
+          Name: Build-LambdaFn-For-CF-Deply
+          Actions:
+          -
+            Name: Build-Lambda-Function
+            ActionTypeId:
+              Category: Build
+              Owner: AWS
+              Version: '1'
+              Provider: CodeBuild
+            Configuration:
+              ProjectName: !Ref LambdaBuild
+            RunOrder: 1
+            InputArtifacts:
+              - Name: SCCheckoutArtifact
+            OutputArtifacts:
+              - Name: BuildOutput
+        -
+          Name: CF-Deploy-LambdaFn
+          Actions:
+            - Name: Deploy-Lambda-Function
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: '1'
+                Provider: CloudFormation
+              Configuration:
+                ChangeSetName: Deploy
+                ActionMode: CREATE_UPDATE
+                StackName: !Sub service-catalog-sync-lambda
+                Capabilities: CAPABILITY_NAMED_IAM
+                TemplatePath: BuildOutput::samtemplate.yaml
+                RoleArn: !GetAtt CFDeployerRole.Arn
+              InputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
+        -
+          Name: Invoke-LambdaFn-Create-Service-Catalog
+          Actions:
+          -
+            Name: Call-Lambda-Function
+            ActionTypeId:
+              Category: Invoke
+              Owner: AWS
+              Version: '1'
+              Provider: Lambda
+            Configuration:
+              FunctionName: service-catalog-sync-lambda
+            InputArtifacts:
+                - Name: SCCheckoutArtifact
+            RunOrder: 1
+        -
+          Name: Invoke-LambdaFn-Create-Launch-Constraint
+          Actions:
+          -
+            Name: Create-Launch-Constraint-LambdaFn
+            ActionTypeId:
+              Category: Invoke
+              Owner: AWS
+              Version: '1'
+              Provider: Lambda
+            Configuration:
+              FunctionName: !Ref LambdaServiceCatalogLC
+              UserParameters: !Sub '{"LocalRoleName": "${SCConstrainVPCEC}"}'
+            RunOrder: 1
+            InputArtifacts: []
+            OutputArtifacts: []
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+  PipelineNotification:
+    Type: AWS::CodeStarNotifications::NotificationRule
+    Properties:
+      DetailType: FULL
+      EventTypeIds:
+        - codepipeline-pipeline-stage-execution-failed
+        - codepipeline-pipeline-pipeline-execution-failed
+        - codepipeline-pipeline-action-execution-failed
+      Name: !Sub pipeline-notification-${AWS::AccountId}
+      Resource: !Sub "arn:${AWS::Partition}:codepipeline:${AWS::Region}:${AWS::AccountId}:${Pipeline}"
+      Targets:
+        - TargetType: SNS
+          TargetAddress: !Ref SNSCodePipeline
+### In case I want to switch to event bridge notification ###
+  # EventRulePipelineFailure:
+  #  Type: AWS::Events::Rule
+  #  Properties:
+  #    Description: event rule to notify of pipeline stage failure
+  #    EventPattern:
+  #      source:
+  #        - aws.codepipeline
+  #      account:
+  #        - !Ref AWS::AccountId
+  #      region:
+  #        - !Ref AWS::Region
+  #      resources:
+  #        - !Sub "arn:${AWS::Partition}:codepipeline:${AWS::Region}:${AWS::AccountId}:${Pipeline}"
+  #      detail-type:
+  #        - CodePipeline Pipeline Execution State Change
+  #      detail:
+  #        pipeline:
+  #          - !Ref Pipeline
+  #        state:
+  #          - FAILED
+  #    Name: !Sub PipelineFailed-${AWS::StackName}
+  #    State: ENABLED
+  #    Targets:
+  #      - Arn: !Ref 'SNSPipelineFailure'
+  #        Id: !Sub Id1234
+Outputs:
+  ArtifactBucket:
+    Description: ArtifactBucket to be Used
+    Value: !Ref ArtifactBucket
+  RepositoryHttpUrl:
+    Description: CodeCommit Repository HTTP URL to push Service Catalog Related Artifacts
+    Value: !GetAtt ServiceCatalogRepo.CloneUrlHttp
+  RepositorySSHUrl:
+    Description: CodeCommit Repository SSH URL to push Service Catalog Related Artifacts
+    Value: !GetAtt ServiceCatalogRepo.CloneUrlSsh
+  SNSARN:
+    Value: !Ref SNSCodePipeline
+  ConstraintRole:
+    Description: Constraint Role for Service Catalog
+    Value: !Ref SCConstrainVPCEC
+  UserGroup1:
+    Description: User Group 1 for access to Service Catalog Portfolio
+    Value: !Ref Dev1Group
+  UserGroup2:
+    Description: User Group 1 for access to Service Catalog Portfolio
+    Value: !Ref Dev2Group

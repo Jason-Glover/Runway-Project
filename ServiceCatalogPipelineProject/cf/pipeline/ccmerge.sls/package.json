@@ -1,0 +1,14 @@
+{
+  "name": "ccmerge",
+  "version": "1.5.1",
+  "description": "codecommit",
+  "main": "ccmerge.py",
+  "devDependencies": {
+    "serverless": "^1.28.0",
+    "serverless-python-requirements": "^4.1.0"
+  },
+  "author": "Onica",
+  "dependencies": {
+    "serverless-plugin-aws-alerts": "^1.2.4"
+  }
+}

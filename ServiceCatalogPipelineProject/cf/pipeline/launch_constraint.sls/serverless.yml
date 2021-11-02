@@ -1,0 +1,30 @@
+service: Lambda-ServiceCatalog-LC
+package:
+  exclude:
+    - 'node_modules/**'
+provider:
+  name: aws
+  runtime: python3.8
+  logRetentionInDays: 1
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - cloudwatch:*
+        - logs:*
+        - lambda:*
+        - codepipeline:*
+        - servicecatalog:*
+        - iam:GetRole
+        - iam:PassRole
+      Resource: '*'
+
+functions:
+  constraint:
+    handler: lconstraint.lambda_handler
+
+resources:
+  #Resources:
+
+  Outputs:
+    LambdaName:
+      Value: !Ref ConstraintLambdaFunction

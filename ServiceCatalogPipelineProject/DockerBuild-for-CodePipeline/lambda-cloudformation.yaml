@@ -1,0 +1,64 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: service-catalog-sync-lambda
+Resources:
+  LAMBDA:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: service-catalog-sync-lambda
+      Handler: sync-catalog.handler
+      Runtime: python3.8
+      Description: Function to sync service catalog with a configuration file
+      Code: ./
+      MemorySize: 128
+      Timeout: 300
+      Role: !GetAtt LAMBDAROLE.Arn
+  LAMBDAROLE:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: !Sub service-catalog-sync-lambda-role-${AWS::Region}
+        AssumeRolePolicyDocument:
+          Version: 2012-10-17
+          Statement:
+            -
+              Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        Path: /
+  LAMBDAPOLICY:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub service-catalog-sync-lambda-policy-${AWS::Region}
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - servicecatalog:*
+              - s3:*
+              - codepipeline:PutJobFailureResult
+              - codepipeline:PutJobSuccessResult
+              - cloudformation:ValidateTemplate
+              - iam:GetRole
+              - iam:GetGroup
+            Resource:
+              - "*"
+          -
+            Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+      Roles:
+        -
+          !Ref LAMBDAROLE
+Outputs:
+  LambdaArn:
+    Description: ARN of the Lambda Function, which syncs up configuration files with yaml file
+    Value: !GetAtt LAMBDA.Arn
+    Export:
+      Name: service-catalog-sync-lambda
