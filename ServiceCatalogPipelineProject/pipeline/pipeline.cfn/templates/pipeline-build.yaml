@@ -439,7 +439,7 @@ Resources:
             InputArtifacts: []
             OutputArtifacts: []
         -
-          Name: Build-LambdaFn-For-CF-Deply
+          Name: Build-LambdaFn-For-CF-Deploy
           Actions:
           -
             Name: Build-Lambda-Function
