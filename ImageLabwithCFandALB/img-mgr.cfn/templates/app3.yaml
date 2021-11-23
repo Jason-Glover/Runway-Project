@@ -169,6 +169,7 @@ Resources:
               - Action:
                   - 'ec2:DescribeTags'
                   - 'elasticloadbalancing:DescribeTargetHealth'
+                  - 'cloudformation:SignalResource'
                 Effect: Allow
                 Resource:
                   - '*'
@@ -284,6 +285,10 @@ Resources:
         - Key: environment
           PropagateAtLaunch: true
           Value: !Ref EnvironmentName
+    CreationPolicy:
+      ResourceSignal:
+        Count: '1'
+        Timeout: PT10M
     UpdatePolicy:
       AutoScalingRollingUpdate:
         MinInstancesInService: !Ref ASGMin
@@ -380,7 +385,7 @@ Resources:
             ELBHealthCheck:
               command: !Sub
                 'until [ "$state" == "\"healthy\"" ]; do state=$(aws --region ${AWS::Region} elbv2 describe-target-health
-                 ----target-group-arn ${ELBTargetGroup}
+                 --target-group-arn ${ELBTargetGroup}
                  --targets Id=$(curl -s http://169.254.169.254/latest/meta-data/instance-id),Port=80
                  --query TargetHealthDescriptions[0].TargetHealth.State); sleep 10; done'
     Properties:
@@ -537,6 +542,7 @@ Resources:
               - sudo yum install stress -y
               - !Sub "/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource MyLaunchTemplate --configsets full_install --region ${AWS::Region}"
               - !Sub "/opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource myASG --region ${AWS::Region}"
+              - echo testing
               - ''
 Outputs:
   ALB:
