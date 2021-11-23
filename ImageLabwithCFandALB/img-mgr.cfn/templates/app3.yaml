@@ -1,0 +1,547 @@
+AWSTemplateFormatVersion: 2010-09-09
+#Old Flask location: https://github.com/dianephan/flask-aws-storage.git
+#Glover Flask Location: https://github.com/Jason-Glover/flask-aws-storage.git
+#Spell Flask Location: https://github.com/spellingb/flask-aws-storage.git
+Description: Image Manager - 1.0.0
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: Environment to which this stack belongs
+    AllowedValues:
+      - development
+      - production
+  SNSEmail:
+    Description: Enter Email Address for CloudWatch Alarm Notification
+    Type: String
+  CustomerName:
+    Type: String
+    Description: Name of customer
+  ApplicationName:
+    Type: String
+    Description: The name of the application
+  SshKey:
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    Description: SSH Key pair to auth with
+  ImageId:
+    Type: 'AWS::EC2::Image::Id'
+    Description: The AMI to base this instance off of
+    Default: ami-083ac7c7ecf9bb9b0
+  VpcId:
+    Type: 'AWS::EC2::VPC::Id'
+    Description: The VPC the resources are launched within
+  #LoadBalancerSubnets:
+    #Type: 'List<AWS::EC2::Subnet::Id>'
+    #Description: List of subnets for ELB
+  #LoadBalancerSubnets2:
+    #Type: 'CommaDelimitedList'
+    #Description: List of subnets for ELB
+  PublicSubnet1:
+    Type: String
+    Description: Public Subnet 1 from common-vpc stack
+  PublicSubnet2:
+    Type: String
+    Description: Public Subnet 2 from common-vpc stack
+  ASGMin:
+    Type: String
+    Description: Please add in your minimum instanaces for your AutoScaling Group.
+    Default: '2'
+  ASGMax:
+    Type: String
+    Description: Please add in your maximum instanaces for your AutoScaling Group.
+    Default: '4'
+  Subnet:
+    Type: 'List<AWS::EC2::Subnet::Id>'
+    Description: Subnet for instance to live within
+  CPUHighPolicyTargetValue:
+    Type: String
+    Description: CPU High threshold for TargetTracking Scaling Out Policy
+    Default: '50'
+  CPULowPolicyTargetValue:
+    Type: String
+    Description: CPU Low threshold for TargetTracking Scaling In Policy
+    Default: '15'
+  InstanceType:
+    Type: String
+    Description: Instance size
+    Default: t2.small
+    AllowedValues:
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - c3.large
+      - c3.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - d2.2xlarge
+      - d2.4xlarge
+      - d2.8xlarge
+      - d2.xlarge
+      - g2.2xlarge
+      - g2.2xlarge
+      - g2.8xlarge
+      - g2.8xlarge
+      - i2.2xlarge
+      - i2.4xlarge
+      - i2.8xlarge
+      - i2.xlarge
+      - m1.xlarge
+      - m3.2xlarge
+      - m3.large
+      - m3.medium
+      - m3.xlarge
+      - m4.10xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.large
+      - m4.xlarge
+      - r3.2xlarge
+      - r3.4xlarge
+      - r3.8xlarge
+      - r3.large
+      - r3.xlarge
+      - t2.large
+      - t2.large
+      - t2.medium
+      - t2.micro
+      - t2.small
+      - t3.large
+      - t3.large
+      - t3.medium
+      - t3.micro
+      - t3.small
+Resources:
+  InstanceProfile:
+    Properties:
+      Path: /
+      Roles:
+        - !Ref Role
+    Type: 'AWS::IAM::InstanceProfile'
+  Role:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+        Version: 2012-10-17
+      Path: /
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:DeleteObject'
+                Effect: Allow
+                Resource:
+                  - !Join
+                    - ''
+                    - - !GetAtt
+                        - S3Bucket
+                        - Arn
+                      - /*
+            Version: 2012-10-17
+          PolicyName: s3getputdelete
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - 's3:ListBucket'
+                Effect: Allow
+                Resource:
+                  - !Join
+                    - ''
+                    - - !GetAtt
+                        - S3Bucket
+                        - Arn
+            Version: 2012-10-17
+          PolicyName: s3listbucket
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - 'ec2:DescribeTags'
+                  - 'elasticloadbalancing:DescribeTargetHealth'
+                Effect: Allow
+                Resource:
+                  - '*'
+            Version: 2012-10-17
+          PolicyName: ec2desctags
+    Type: 'AWS::IAM::Role'
+  S3Bucket:
+    Type: 'AWS::S3::Bucket'
+  Distribution:
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName: !GetAtt 'InternalElasticLoadBalancer.DNSName'
+            Id: !Ref InternalElasticLoadBalancer
+            CustomOriginConfig:
+              HTTPPort: 80
+              OriginProtocolPolicy: http-only
+        Enabled: true
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - DELETE
+            - GET
+            - HEAD
+            - OPTIONS
+            - PATCH
+            - POST
+            - PUT
+          TargetOriginId: !Ref InternalElasticLoadBalancer
+          DefaultTTL: 100
+          MaxTTL: 100
+          MinTTL: 50
+          ForwardedValues:
+            QueryString: true
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+        CacheBehaviors:
+          - PathPattern: /pics
+            TargetOriginId: !Ref InternalElasticLoadBalancer
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+  InternalElasticLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+        Scheme: internet-facing
+        SecurityGroups:
+          - !Ref LbSG
+        Subnets:
+          - !Ref PublicSubnet1
+          - !Ref PublicSubnet2
+        Type: application
+  ELBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 80
+      Protocol: 'HTTP'
+      VpcId: !Ref VpcId
+  ALBListener1:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+        LoadBalancerArn: !Ref InternalElasticLoadBalancer
+        Port: 80
+        Protocol: HTTP
+        DefaultActions:
+          - Type: forward
+            TargetGroupArn: !Ref 'ELBTargetGroup'
+  LbSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Allow http from internet
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+  ServerSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Allow http to client host
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref LbSG
+  myASG:
+    Type: 'AWS::AutoScaling::AutoScalingGroup'
+    Properties:
+      MinSize: !Ref 'ASGMin'
+      MaxSize: !Ref 'ASGMax'
+      DesiredCapacity: '2'
+      TargetGroupARNs:
+        - !Ref ELBTargetGroup
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 300
+      LaunchTemplate:
+        LaunchTemplateId: !Ref MyLaunchTemplate
+        Version: !GetAtt
+          - MyLaunchTemplate
+          - LatestVersionNumber
+      VPCZoneIdentifier: !Ref Subnet
+      Tags:
+        - Key: Name
+          PropagateAtLaunch: true
+          Value: !Sub '${EnvironmentName}-image-manager'
+        - Key: environment
+          PropagateAtLaunch: true
+          Value: !Ref EnvironmentName
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MinInstancesInService: !Ref ASGMin
+        MaxBatchSize: 1
+        WaitOnResourceSignals: true
+        PauseTime: PT10M
+  CPUHighScalingPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AdjustmentType: "ChangeInCapacity"
+      AutoScalingGroupName:
+        Ref: "myASG"
+      Cooldown: '300'
+      ScalingAdjustment: 1
+  CPULowScalingPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AdjustmentType: "ChangeInCapacity"
+      AutoScalingGroupName:
+        Ref: "myASG"
+      Cooldown: '300'
+      ScalingAdjustment: -1
+  CPUAlarmHigh:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: Scale Out if CPU is greater than 50% for 5 minutes
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: !Ref 'CPUHighPolicyTargetValue'
+      AlarmActions:
+        - !Ref MySNSTopic
+        - !Ref CPUHighScalingPolicy
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref myASG
+      ComparisonOperator: GreaterThanThreshold
+  CPUAlarmLow:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: Scale In if CPU is less than 15% for 5 minutes
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: !Ref 'CPULowPolicyTargetValue'
+      AlarmActions:
+        - !Ref CPULowScalingPolicy
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref myASG
+      ComparisonOperator: LessThanThreshold
+  MySNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+      - Endpoint:
+         !Ref 'SNSEmail'
+        Protocol: email
+  MyLaunchTemplate:
+    Type: 'AWS::EC2::LaunchTemplate'
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          full_install: [install_cfn, verify_instance_health]
+        install_cfn:
+          files:
+            /etc/cfn/cfn-hup.conf:
+              content: !Sub |
+                [main]
+                stack=${AWS::StackId}
+                region=${AWS::Region}
+              mode: '000400'
+              owner: root
+              group: root
+            /etc/cfn/hooks.d/cfn-auto-reloader.conf:
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.MyLaunchTemplate.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource MyLaunchTemplate --configsets full_install --region ${AWS::Region}
+                runas=root
+          services:
+            sysvinit:
+              cfn-hup:
+                enabled: 'true'
+                ensureRunning: 'true'
+                files: [/etc/cfn/cfn-hup.conf, /etc/cfn/hooks.d/cfn-auto-reloader.conf]
+        verify_instance_health:
+          commands:
+            ELBHealthCheck:
+              command: !Sub
+                'until [ "$state" == "\"healthy\"" ]; do state=$(aws --region ${AWS::Region} elbv2 describe-target-health
+                 ----target-group-arn ${ELBTargetGroup}
+                 --targets Id=$(curl -s http://169.254.169.254/latest/meta-data/instance-id),Port=80
+                 --query TargetHealthDescriptions[0].TargetHealth.State); sleep 10; done'
+    Properties:
+      LaunchTemplateName: !Sub '${EnvironmentName}-IMG-MGR-Template'
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Arn: !GetAtt
+            - InstanceProfile
+            - Arn
+        DisableApiTermination: false
+        ImageId: !Ref ImageId
+        InstanceType: !Ref InstanceType
+        KeyName: !Ref SshKey
+        SecurityGroupIds:
+          - !Ref ServerSG
+        # UserData:
+        #   Fn::Base64: !Sub |
+        #     #!/bin/sh
+        #     yum install -y git jq
+        #     amazon-linux-extras install -y nginx1
+        #     yum install -y aws-cfn-bootstrap
+        #     yum update -y aws-cfn-bootstrap
+        #     pip3 install pipenv
+
+        #     cd ~ec2-user/
+        #     cat > ~/.ssh/config << EOF
+        #     Host *
+        #         StrictHostKeyChecking no
+        #     EOF
+        #     chmod 600 ~/.ssh/config
+        #     git clone https://github.com/Jason-Glover/flask-aws-storage.git
+        #     cd flask-aws-storage
+        #     mkdir uploads
+        #     chown -R ec2-user:ec2-user .
+        #     cat > run.sh << EOF
+        #     #!/bin/sh'
+        #     pipenv install
+        #     pipenv run pip3 install -r requirements.txt
+        #     REGION=\$(curl
+        #     http://169.254.169.254/latest/meta-data/placement/region)
+        #     IID=\$(curl http://169.254.169.254/latest/meta-data/instance-id)
+        #     ENV=\$(aws --region \$REGION ec2 describe-tags --filters
+        #     Name=resource-id,Values=\$IID | jq -r '.Tags[]|select(.Key ==
+        #     "environment")|.Value')
+        #     FLASK_ENV=\$ENV pipenv run flask run
+        #     EOF
+        #     chmod 755 run.sh
+
+        #     cat > /etc/systemd/system/imgmgr.service << EOF
+        #     [Unit]
+        #     Description=Image manager app
+        #     After=network.target
+
+        #     [Service]
+        #     User=ec2-user
+        #     WorkingDirectory=/home/ec2-user/flask-aws-storage
+        #     ExecStart=/home/ec2-user/flask-aws-storage/run.sh
+        #     Restart=always
+
+        #     [Install]
+        #     WantedBy=multi-user.target
+        #     EOF
+
+        #     sed -i s/lats-image-data/${S3Bucket}/ app.py
+        #     systemctl daemon-reload
+        #     systemctl start imgmgr
+
+        #     cat > /etc/nginx/conf.d/myapp.conf << EOF
+        #     server {
+        #        listen 80;
+        #        server_name localhost;
+        #        location / {
+        #               proxy_set_header Host \$http_host;
+        #               proxy_pass http://127.0.0.1:5000;
+        #         }
+        #      }
+        #     EOF
+        #     systemctl restart nginx.service
+        #     sudo yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm -y
+        #     sudo yum install stress -y
+        #     /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource MyLaunchTemplate --configsets full_install --region ${AWS::Region}
+        #     /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource myASG --region ${AWS::Region}
+
+        UserData: !Base64
+          'Fn::Join':
+            - |+
+
+            - - '#!/bin/sh'
+              - yum install -y git jq
+              - amazon-linux-extras install -y nginx1
+              - yum install -y aws-cfn-bootstrap
+              - yum update -y aws-cfn-bootstrap
+              - pip3 install pipenv
+              - ''
+              - cd ~ec2-user/
+              - cat > ~/.ssh/config << EOF
+              - Host *
+              - '    StrictHostKeyChecking no'
+              - EOF
+              - chmod 600 ~/.ssh/config
+              - 'git clone https://github.com/Jason-Glover/flask-aws-storage.git'
+              - cd flask-aws-storage
+              - mkdir uploads
+              - 'chown -R ec2-user:ec2-user .'
+              - cat > run.sh << EOF
+              - '#!/bin/sh'
+              - pipenv install
+              - pipenv run pip3 install -r requirements.txt
+              - |-
+                REGION=\$(curl
+                http://169.254.169.254/latest/meta-data/placement/region)
+              - 'IID=\$(curl http://169.254.169.254/latest/meta-data/instance-id)'
+
+              - |-
+                ENV=\$(aws --region \$REGION ec2 describe-tags --filters
+                Name=resource-id,Values=\$IID | jq -r '.Tags[]|select(.Key ==
+                "environment")|.Value')
+
+              - FLASK_ENV=\$ENV pipenv run flask run
+              - EOF
+              - chmod 755 run.sh
+              - ''
+              - cat > /etc/systemd/system/imgmgr.service << EOF
+              - '[Unit]'
+              - Description=Image manager app
+              - After=network.target
+              - ''
+              - '[Service]'
+              - User=ec2-user
+              - WorkingDirectory=/home/ec2-user/flask-aws-storage
+              - ExecStart=/home/ec2-user/flask-aws-storage/run.sh
+              - Restart=always
+              - ''
+              - '[Install]'
+              - WantedBy=multi-user.target
+              - EOF
+              - ''
+              - !Sub 'sed -i s/lats-image-data/${S3Bucket}/ app.py'
+              - systemctl daemon-reload
+              - systemctl start imgmgr
+              - ''
+              - cat > /etc/nginx/conf.d/myapp.conf << EOF
+              - 'server {'
+              - '   listen 80;'
+              - '   server_name localhost;'
+              - '   location / {'
+              - '        proxy_set_header Host \$http_host;'
+              - '        proxy_pass http://127.0.0.1:5000;'
+              - '    }'
+              - '}'
+              - EOF
+              - systemctl restart nginx.service
+              - sudo yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm -y
+              - sudo yum install stress -y
+              - !Sub "/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource MyLaunchTemplate --configsets full_install --region ${AWS::Region}"
+              - !Sub "/opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource myASG --region ${AWS::Region}"
+              - ''
+Outputs:
+  ALB:
+    Value: !GetAtt 'InternalElasticLoadBalancer.DNSName'
+  CF:
+    Value: !GetAtt 'Distribution.DomainName'
+  S3ARN:
+    Value: !GetAtt S3Bucket.Arn
