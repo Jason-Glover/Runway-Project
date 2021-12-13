@@ -1,0 +1,8 @@
+version: '3.8'
+services:
+  beanstalk-flask:
+    image: "569020019201.dkr.ecr.us-west-2.amazonaws.com/img-mgr:latest"
+    ports:
+      - "80:5000"
+    environment:
+      - BUCKET_NAME
