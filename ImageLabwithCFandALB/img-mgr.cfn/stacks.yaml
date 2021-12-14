@@ -5,8 +5,9 @@ sys_path: ./
 
 stacks:
   img-mgr:
-    template_path: templates/app3.yaml  # also supports json templates
-    #template_path: templates/app2.yaml  #alternate version with OAI and 2nd Origin
+    template_path: templates/app3.yaml  # alternative version with creation policy and LB healthcheck using cfn helper
+    #template_path: templates/app2.yaml  # alternate version with OAI and 2nd Origin
+    #template_path: templates/app.yaml original base version
     variables:
       EnvironmentName: ${environment}
       CustomerName: ${customer}
