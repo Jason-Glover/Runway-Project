@@ -113,6 +113,8 @@ Parameters:
       - t3.medium
       - t3.micro
       - t3.small
+Conditions:
+  envname: !Equals [!Ref EnvironmentName, dev]
 Resources:
   InstanceProfile:
     Properties:
@@ -265,9 +267,9 @@ Resources:
   myASG:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
     Properties:
-      MinSize: !Ref 'ASGMin'
-      MaxSize: !Ref 'ASGMax'
-      DesiredCapacity: '2'
+      MinSize: !If [envname, 1, !Ref ASGMin]
+      MaxSize: !If [envname, 1, !Ref ASGMax]
+      DesiredCapacity: !if [envname, 1, !Ref ASGMin]
       TargetGroupARNs:
         - !Ref ELBTargetGroup
       HealthCheckType: ELB
