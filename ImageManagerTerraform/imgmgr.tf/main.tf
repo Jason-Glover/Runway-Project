@@ -1,7 +1,7 @@
 /*
- Template to setup and configure Image Manager 
+ Template to setup and configure Image Manager
 ***********************************************
- IAM Roles and Policies are found in iam.tf  
+ IAM Roles and Policies are found in iam.tf
  Security Groups are found in securitygroups.tf
  Imported Data is found in dataimports.tf
  Dev Env
@@ -105,7 +105,7 @@ resource "aws_instance" "bastian" {
 ###############################################
 
 resource "aws_key_pair" "my_keypair" {
-    key_name = "${var.region}_keypair"
+    key_name = terraform.workspace == "dev" ? "${var.region}_keypair" : "${terraform.workspace}-${var.region}_keypair"
     public_key = "${file("~/.ssh/id_rsa.pub")}"
 }
 
@@ -128,7 +128,7 @@ resource "aws_autoscaling_group" "ASG" {
   }
   instance_refresh {
     strategy = "Rolling"
-    
+
     preferences {
       min_healthy_percentage = 50
     }
@@ -206,7 +206,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
   alarm_description = "This metric monitors ec2 ASG high cpu utilization"
   alarm_actions     = [
     aws_autoscaling_policy.asg_cpu_high.arn,
-    data.aws_cloudformation_export.snsarn.value
+    data.aws_cloudformation_stack.snsarn.outputs.SNSTopicArn
     ]
 }
 
@@ -239,7 +239,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_low" {
 resource "aws_cloudfront_distribution" "cf" {
   enabled = true
   price_class = "PriceClass_100"
-  
+
   origin {
     domain_name              = aws_lb.alb.dns_name
     origin_id                = "${terraform.workspace}-${var.ApplicationName}-CloudFront"
@@ -250,7 +250,7 @@ resource "aws_cloudfront_distribution" "cf" {
       origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
-  
+
   default_cache_behavior {
     allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods         = ["GET", "HEAD"]

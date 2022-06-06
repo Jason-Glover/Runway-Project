@@ -2,6 +2,7 @@
 # See full syntax at https://docs.onica.com/projects/runway
 deployments:
   - modules:
+      - path: stateresources.cfn
       - path: vpc.tf
       - path: imgmgr.tf
       # - etc...
